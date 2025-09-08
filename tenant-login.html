@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Login - Shekhawat Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        /* ADDED: CSS for Toast Notifications */
+        @keyframes toast-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes toast-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
+        .toast-in { animation: toast-in 0.3s ease forwards; }
+        .toast-out { animation: toast-out 0.3s ease forwards; }
+    </style>
+    <script>
+      // Sets theme color on initial load to prevent FOUC (Flash of Unstyled Content)
+      const savedThemeColor = localStorage.getItem('themeColor') || '#4f46e5';
+      const savedThemeRgb = localStorage.getItem('themeRgb') || '79, 70, 229';
+      document.documentElement.style.setProperty('--theme-color', savedThemeColor);
+      document.documentElement.style.setProperty('--theme-rgb', savedThemeRgb);
+    </script>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8">
+            <img src="logo.png" alt="Shekhawat Properties Logo" class="h-12 w-auto mx-auto mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Tenant Portal</h1>
+            <p class="text-gray-500">Sign in to access your dashboard.</p>
+        </div>
+        <div class="bg-white p-8 rounded-2xl shadow-lg">
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-600">Email Address</label>
+                    <input type="email" id="email" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-600">Password</label>
+                    <input type="password" id="password" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <button type="submit" id="login-btn" class="w-full text-white font-semibold py-3 px-5 rounded-lg hover:brightness-110 transition-colors flex items-center justify-center" style="background-color: var(--theme-color, #4f46e5);">
+                    <span>Login</span>
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { collection, query, where, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        lucide.createIcons();
+
+        const loginForm = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+
+        const originalLoginBtnHTML = loginBtn.innerHTML;
+        const spinnerHTML = `<div class="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>`;
+
+        const showToast = (message, type = 'error') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+            const icon = type === 'success' ? '<i data-lucide="check-circle" class="w-5 h-5"></i>' : '<i data-lucide="alert-circle" class="w-5 h-5"></i>';
+            toast.className = `flex items-center space-x-3 p-3 rounded-lg text-white font-semibold shadow-lg toast-in ${bgColor}`;
+            toast.innerHTML = `${icon}<span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => {
+                toast.classList.remove('toast-in');
+                toast.classList.add('toast-out');
+                toast.addEventListener('animationend', () => toast.remove());
+            }, 4000);
+        };
+
+        // Function to check if a user is a registered tenant and redirect
+        const checkTenantAndRedirect = async (user) => {
+            // 1. Primary check: by UID
+            let tenantSnap = await getDoc(doc(db, "tenants", user.uid));
+
+            if (tenantSnap.exists() && tenantSnap.data().status !== 'Archived') {
+                // Found by UID, this is the ideal case.
+                localStorage.setItem('tenantLoginTimestamp', Date.now()); // Session start time
+                window.location.href = 'tenant-dashboard.html';
+                return; // Exit function
+            }
+            
+            // 2. Fallback check: by email for legacy accounts
+            const q = query(collection(db, "tenants"), where("email", "==", user.email), where("status", "!=", "Archived"));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                // Found by email, let them in.
+                localStorage.setItem('tenantLoginTimestamp', Date.now()); // Session start time
+                window.location.href = 'tenant-dashboard.html';
+            } else {
+                // If not found by UID or email, they are not an active tenant.
+                await auth.signOut();
+                throw new Error("This email is not registered as an active tenant.");
+            }
+        };
+
+        // Handle Email/Password Login
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            const handleLoginError = (error) => {
+                let friendlyMessage;
+                // Check for our custom application error first
+                if (error.message === "This email is not registered as an active tenant.") {
+                    friendlyMessage = error.message;
+                } else {
+                    // Handle Firebase Authentication errors
+                    switch (error.code) {
+                        case 'auth/user-not-found':
+                        case 'auth/wrong-password':
+                        case 'auth/invalid-credential':
+                            friendlyMessage = "Invalid email or password. Please try again.";
+                            break;
+                        case 'auth/invalid-email':
+                            friendlyMessage = "The email address format is not valid.";
+                            break;
+                        case 'auth/user-disabled':
+                            friendlyMessage = "This user account has been disabled.";
+                            break;
+                        default:
+                            friendlyMessage = "An unexpected error occurred during login. Please try again.";
+                    }
+                }
+                showToast(friendlyMessage, 'error');
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = originalLoginBtnHTML;
+            };
+
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = spinnerHTML;
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                // After successful Firebase Auth sign-in, check if they are a valid tenant in Firestore
+                await checkTenantAndRedirect(userCredential.user);
+            } catch (error) {
+                console.error("Login Failed:", error.code, error.message);
+                handleLoginError(error);
+            }
+        });
+
+    </script>
+</body>
+</html>

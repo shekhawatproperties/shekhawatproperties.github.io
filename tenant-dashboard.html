@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Shekhawat Market</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f0f2f5;
+    }
+    #mobile-menu { transition: transform 0.3s ease-in-out; }
+    @keyframes toast-in {
+        from { opacity: 0; transform: translateX(100%); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes toast-out {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(100%); }
+    }
+    .toast-in { animation: toast-in 0.3s ease forwards; }
+    .toast-out { animation: toast-out 0.3s ease forwards; }
+  </style>
+  <script>
+      const savedThemeColor = localStorage.getItem('themeColor') || '#edbf6d';
+      document.documentElement.style.setProperty('--theme-color', savedThemeColor);
+  </script>
+</head>
+<body class="text-gray-800">
+
+  <div id="mobile-menu" class="fixed top-0 left-0 w-72 h-full bg-white shadow-lg z-50 transform -translate-x-full md:hidden flex flex-col p-4">
+    <div class="flex justify-between items-center pb-4 border-b mb-4">
+        <img src="logo.png" alt="Shekhawat Properties Logo" class="h-8 w-auto">
+        <button id="close-menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
+            <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <nav class="flex flex-col space-y-2">
+        <a href="tenant-dashboard.html" class="flex items-center px-3 py-2 text-white rounded-lg font-semibold text-sm" style="background-color: var(--theme-color);"><i data-lucide="layout-dashboard" class="w-4 h-4 mr-3"></i>Dashboard</a>
+        <a href="tenant-payment-history.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="history" class="w-4 h-4 mr-3"></i>Payment History</a>
+        <a href="tenant-documents.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i>Documents</a>
+        <a href="tenant-profile.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="user" class="w-4 h-4 mr-3"></i>My Profile</a>
+    </nav>
+
+    <div class="mt-auto">
+        <nav class="flex flex-col space-y-2 mb-4">
+             <hr class="my-1">
+             <button id="mobile-logout-btn" class="flex items-center px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm w-full"><i data-lucide="log-out" class="w-4 h-4 mr-3"></i>Logout</button>
+        </nav>
+        <div class="border-t pt-4">
+             <div class="flex items-center">
+                <img id="sidebar-profile-img" src="https://placehold.co/40x40/e0e7ff/4f46e5?text=U" alt="Tenant" class="w-10 h-10 rounded-full">
+                <div class="ml-3">
+                    <p id="sidebar-user-name" class="text-sm font-semibold text-gray-800">Loading...</p>
+                    <p id="sidebar-user-email" class="text-xs text-gray-500">Loading...</p>
+                </div>
+             </div>
+        </div>
+    </div>
+  </div>
+  <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+
+  <div class="p-4 lg:p-8">
+    <header class="bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm mb-8">
+      <div class="flex items-center space-x-2 sm:space-x-8">
+        <button id="menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full md:hidden">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+        <div class="flex items-center space-x-4">
+  <img src="logo.png" alt="Shekhawat Properties Logo" class="h-8 w-auto">
+</div>
+        <nav class="hidden md:flex items-center space-x-1">
+          <a href="tenant-dashboard.html" class="px-3 py-2 text-white rounded-lg font-semibold text-sm" style="background-color: var(--theme-color);">Dashboard</a>
+          <a href="tenant-payment-history.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Payment History</a>
+          <a href="tenant-documents.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Documents</a>
+          <a href="tenant-profile.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">My Profile</a>
+        </nav>
+      </div>
+      <div class="hidden md:flex items-center space-x-4">
+        <div class="text-right">
+          <p class="font-semibold" id="tenant-name-header">Loading...</p>
+          <p class="text-xs text-gray-500" id="tenant-id-header">ID: ...</p>
+        </div>
+        <div class="relative">
+            <button id="profile-btn" class="flex items-center justify-center focus:outline-none">
+                <img src="https://placehold.co/40x40/e0e7ff/4f46e5?text=U" alt="Tenant" class="w-10 h-10 rounded-full" id="tenant-avatar-header">
+            </button>
+            <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                <button id="logout-btn" class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="log-out" class="w-4 h-4 mr-2"></i>Logout</button>
+            </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <div id="loader" class="text-center p-10">
+        <div class="animate-spin w-10 h-10 border-4 border-indigo-200 rounded-full mx-auto" style="border-top-color: var(--theme-color);"></div>
+        <p class="mt-4 text-gray-600">Loading your dashboard...</p>
+      </div>
+      <div id="dashboard-content" class="hidden">
+        <header class="mb-8">
+          <h1 class="text-4xl font-bold text-gray-900" id="welcome-message">Welcome!</h1>
+          <p class="text-gray-500 mt-1">Here is a summary of your account.</p>
+        </header>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div class="lg:col-span-2 space-y-8">
+            <div id="payment-due-card" class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border-l-4 border-gray-300"></div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm">
+              <h2 class="text-xl font-bold mb-4 flex items-center space-x-2"><i data-lucide="megaphone" style="color: var(--theme-color);"></i><span>Notice Board</span></h2>
+              <div id="notice-board-content" class="p-4 bg-gray-50 rounded-lg"></div>
+            </div>
+          </div>
+          <div class="space-y-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm">
+              <h2 class="text-xl font-bold mb-4">My Property Details</h2>
+              <div class="space-y-3">
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <i data-lucide="store" class="w-6 h-6" style="color: var(--theme-color);"></i>
+                  <div><p class="font-semibold text-lg" id="property-name"></p><p class="text-gray-500 text-sm">Property</p></div>
+                </div>
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <i data-lucide="calendar" class="w-6 h-6" style="color: var(--theme-color);"></i>
+                  <div><p class="font-semibold" id="agreement-start-date"></p><p class="text-gray-500 text-sm">Agreement Start Date</p></div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm">
+              <h2 class="text-xl font-bold mb-4">Financial Summary</h2>
+              <div class="space-y-3">
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <i data-lucide="landmark" class="w-6 h-6 flex-shrink-0" style="color: var(--theme-color);"></i>
+                  <div><p class="font-semibold text-lg" id="security-deposit-amount"></p><p class="text-gray-500 text-sm" id="security-deposit-label">Security Deposit</p></div>
+                </div>
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <i data-lucide="trending-up" class="w-6 h-6" style="color: var(--theme-color);"></i>
+                  <div><p class="font-semibold" id="next-increment-date"></p><p class="text-gray-500 text-sm">Next Rent Increment</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-8">
+          <div class="bg-white p-6 rounded-2xl shadow-sm">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Recent Payment History</h2>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead class="border-b-2 border-gray-200">
+                  <tr>
+                    <th class="p-4 font-semibold">Transaction ID</th>
+                    <th class="p-4 font-semibold">Payment Date</th>
+                    <th class="p-4 font-semibold">Mode</th>
+                    <th class="p-4 font-semibold">Amount Paid</th>
+                    <th class="p-4 font-semibold text-center">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody id="payment-history-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+<div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-2"></div>
+
+<div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-5 border-b flex items-center space-x-3">
+            <div class="bg-red-100 p-2 rounded-full"><i data-lucide="alert-triangle" class="w-6 h-6 text-red-600"></i></div>
+            <h2 id="confirm-modal-title" class="text-2xl font-bold text-gray-800">Confirm Action</h2>
+        </div>
+        <div class="p-6"><p id="confirm-modal-message" class="text-gray-600">Are you sure?</p></div>
+        <div class="p-5 bg-gray-50 flex justify-end space-x-4 rounded-b-lg">
+            <button id="cancel-action-btn" class="px-5 py-2 rounded-lg text-gray-800 bg-gray-200 hover:bg-gray-300 font-semibold">Cancel</button>
+            <button id="confirm-action-btn" class="px-5 py-2 rounded-lg text-white font-semibold bg-red-600 hover:bg-red-700">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+  import { db, auth } from './firebase-config.js';
+  import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+  const loader = document.getElementById('loader');
+  const dashboardContent = document.getElementById('dashboard-content');
+  const longDateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+
+  const showToast = (message, type = 'success') => {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+      const icon = type === 'success' ? '<i data-lucide="check-circle" class="w-5 h-5"></i>' : '<i data-lucide="alert-circle" class="w-5 h-5"></i>';
+      toast.className = `flex items-center space-x-3 p-3 rounded-lg text-white font-semibold shadow-lg toast-in ${bgColor}`;
+      toast.innerHTML = `${icon}<span>${message}</span>`;
+      container.appendChild(toast);
+      lucide.createIcons();
+      setTimeout(() => {
+          toast.classList.remove('toast-in');
+          toast.classList.add('toast-out');
+          toast.addEventListener('animationend', () => toast.remove());
+      }, 4000);
+  };
+
+  if (sessionStorage.getItem('showTryAgainToast') === 'true') {
+    showToast('You can now attempt to pay again.', 'success');
+    sessionStorage.removeItem('showTryAgainToast');
+  }
+
+  let confirmCallback = null;
+  const showConfirmModal = (title, message, onConfirm) => {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-message').innerHTML = message;
+      confirmCallback = onConfirm;
+      document.getElementById('confirmation-modal').classList.remove('hidden');
+  };
+  const closeModal = () => { document.getElementById('confirmation-modal').classList.add('hidden'); confirmCallback = null; };
+  document.getElementById('confirm-action-btn').addEventListener('click', () => { if (confirmCallback) confirmCallback(); closeModal(); });
+  document.getElementById('cancel-action-btn').addEventListener('click', closeModal);
+
+  onAuthStateChanged(auth, async (user) => {
+      if (user) {
+          const tenantRef = doc(db, "tenants", user.uid);
+          
+          const [tenantSnap, settingsSnap, noticeSnap, pendingPaymentsSnap] = await Promise.all([
+              getDoc(tenantRef),
+              getDoc(doc(db, "settings", "paymentRules")), 
+              getDoc(doc(db, "settings", "noticeBoard")), 
+              getDocs(query(collection(db, "pendingPayments"), where("tenantId", "==", user.uid)))
+          ]);
+
+          if (!settingsSnap.exists()) {
+             loader.innerHTML = `<p class="text-red-500">Error: Could not load application settings. Please contact support.</p>`;
+             return;
+          }
+          const settingsData = settingsSnap.data();
+          const noticeData = noticeSnap.exists() ? noticeSnap.data() : { message: "No new notices." };
+          const pendingPayment = pendingPaymentsSnap.empty ? null : pendingPaymentsSnap.docs[0].data();
+
+          if (tenantSnap.exists()) {
+              const tenantData = tenantSnap.data();
+              const tenantId = tenantSnap.id;
+              
+              const propertyRef = doc(db, "properties", tenantData.propertyId);
+              const propertySnap = await getDoc(propertyRef);
+              const propertyData = propertySnap.exists() ? propertySnap.data() : { name: 'N/A' };
+              document.getElementById('tenant-name-header').textContent = tenantData.name;
+              document.getElementById('tenant-id-header').textContent = `ID: ${tenantId.substring(0, 6).toUpperCase()}`;
+              const avatarUrl = tenantData.imageUrl || `https://placehold.co/40x40/e0e7ff/4f46e5?text=${tenantData.name.charAt(0)}`;
+              document.getElementById('tenant-avatar-header').src = avatarUrl;
+              document.getElementById('sidebar-profile-img').src = avatarUrl;
+              document.getElementById('sidebar-user-name').textContent = tenantData.name;
+              document.getElementById('sidebar-user-email').textContent = tenantData.email;
+              document.getElementById('welcome-message').textContent = `Welcome, ${tenantData.name.split(' ')[0]}!`;
+              document.getElementById('notice-board-content').innerHTML = `<p class="text-sm text-gray-600">${noticeData.message}</p>`;
+              document.getElementById('property-name').textContent = propertyData.name;
+              document.getElementById('agreement-start-date').textContent = tenantData.agreementDate ? new Date(tenantData.agreementDate.seconds * 1000).toLocaleDateString('en-IN', longDateOptions) : 'N/A';
+              
+              const depositAmountEl = document.getElementById('security-deposit-amount');
+              const depositLabelEl = document.getElementById('security-deposit-label');
+              const depositStatus = tenantData.depositStatus || 'Pending';
+              depositAmountEl.textContent = `₹${(tenantData.deposit || 0).toLocaleString('en-IN')}`;
+              depositLabelEl.textContent = `Security Deposit (${depositStatus})`;
+              
+              const nextIncrementDateEl = document.getElementById('next-increment-date');
+              if (tenantData.rentIncrementDate && tenantData.rentIncrementDate.seconds) {
+                  const anniversaryDate = new Date(tenantData.rentIncrementDate.seconds * 1000);
+                  const today = new Date();
+                  let nextIncrementYear = today.getFullYear();
+                  if (today.getMonth() > anniversaryDate.getMonth() || (today.getMonth() === anniversaryDate.getMonth() && today.getDate() > anniversaryDate.getDate())) {
+                      nextIncrementYear++;
+                  }
+                  const finalNextIncrementDate = new Date(anniversaryDate);
+                  finalNextIncrementDate.setFullYear(nextIncrementYear);
+                  nextIncrementDateEl.textContent = finalNextIncrementDate.toLocaleDateString('en-IN', longDateOptions);
+              } else {
+                  nextIncrementDateEl.textContent = 'N/A';
+              }
+
+              const paymentsQuery = query(collection(db, "payments"), where("tenantId", "==", tenantId), orderBy("date", "desc"), limit(5));
+              const paymentDocs = await getDocs(paymentsQuery);
+              const recentPayments = paymentDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              populateRecentPayments(recentPayments);
+
+              await populatePaymentCard(tenantData, tenantId, settingsData, pendingPayment);
+
+              loader.classList.add('hidden');
+              dashboardContent.classList.remove('hidden');
+              lucide.createIcons();
+
+          } else { window.location.href = 'index.html'; }
+      } else { window.location.href = 'index.html'; }
+  });
+
+  async function populatePaymentCard(tenant, tenantId, settings, pendingPayment) {
+    if (pendingPayment) {
+        renderPendingCard();
+    } else if (tenant.rejectionReason) {
+        renderRejectedCard(tenant, tenantId);
+    } else if (tenant.status === 'Paid') {
+        renderPaidCard(tenant, settings);
+    } else {
+        await renderDueCard(tenant, tenantId, settings);
+    }
+    lucide.createIcons();
+  }
+
+  function renderPendingCard() {
+    const card = document.getElementById('payment-due-card');
+    card.className = 'bg-white p-8 rounded-2xl shadow-sm border-l-4 border-blue-500 text-center';
+    card.innerHTML = `<div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto"><i data-lucide="send" class="w-10 h-10 text-blue-600"></i></div><h2 class="text-2xl font-bold text-gray-800 mt-4">Payment Submitted</h2><p class="text-gray-500 mt-1">It is currently pending verification from the manager.</p>`;
+  }
+
+  function renderRejectedCard(tenant, tenantId) {
+    const card = document.getElementById('payment-due-card');
+    card.className = 'bg-white p-8 rounded-2xl shadow-sm border-l-4 border-red-500';
+    card.innerHTML = `<div class="flex items-center space-x-4"><div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0"><i data-lucide="x-circle" class="w-8 h-8 text-red-600"></i></div><div><h2 class="text-xl font-bold text-red-700">Payment Rejected</h2><p class="text-sm text-gray-600 mt-1"><strong>Reason:</strong> ${tenant.rejectionReason}</p></div></div><div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between"><p class="text-xs text-gray-500 mb-2 sm:mb-0">Please try paying again.</p><button id="try-again-btn" data-tenant-id="${tenantId}" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 text-sm flex items-center justify-center space-x-2"><i data-lucide="refresh-cw" class="w-4 h-4"></i><span>Try Again</span></button></div>`;
+    
+    const tryAgainBtn = document.getElementById('try-again-btn');
+    if (tryAgainBtn) {
+        tryAgainBtn.addEventListener('click', async (e) => {
+            const currentTenantId = e.currentTarget.dataset.tenantId;
+            if (!currentTenantId) return;
+            e.currentTarget.disabled = true;
+            e.currentTarget.innerHTML = `<div class="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mx-auto"></div>`;
+            await setDoc(doc(db, "tenants", currentTenantId), { rejectionReason: "" }, { merge: true });
+            sessionStorage.setItem('showTryAgainToast', 'true');
+            location.reload();
+        });
+    }
+  }
+
+  function renderPaidCard(tenant, settings) {
+    const card = document.getElementById('payment-due-card');
+    const nextDueDate = new Date(tenant.dueDate.seconds * 1000);
+    const windowOpenDate = new Date(nextDueDate);
+    windowOpenDate.setDate(nextDueDate.getDate() - (settings.paymentWindowDaysBefore || 10));
+    const formattedDate = windowOpenDate.toLocaleDateString('en-IN', longDateOptions);
+
+    card.className = 'bg-white p-8 rounded-2xl shadow-sm border-l-4 border-gray-300 text-center';
+    card.innerHTML = `<i data-lucide="calendar-check" class="w-12 h-12 text-green-500 mx-auto"></i><h2 class="text-xl font-bold text-gray-700 mt-4">Rent is Paid</h2><p class="text-gray-500 mt-1">Your next payment window will open on <br><strong class="text-gray-600">${formattedDate}</strong>.</p>`;
+  }
+
+  async function renderDueCard(tenant, tenantId, settings) {
+    const card = document.getElementById('payment-due-card');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = tenant.dueDate ? new Date(tenant.dueDate.seconds * 1000) : new Date();
+
+    let billBreakdownHTML = `<div class="flex justify-between"><span class="font-medium text-gray-500">Base Rent:</span><span>₹${tenant.rent.toLocaleString('en-IN')}</span></div>`;
+    let totalDue = tenant.rent;
+    
+    const unbilledQuery = query(collection(db, "tenants", tenantId, "monthly_charges"), where("isBilled", "==", false));
+    const unbilledSnaps = await getDocs(unbilledQuery);
+
+    if (!unbilledSnaps.empty) {
+        unbilledSnaps.forEach(doc => {
+            const charge = doc.data();
+            const [year, month] = doc.id.split('-');
+            const monthName = new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'short' });
+            totalDue += (charge.electricityBill || 0) + (charge.otherCharges || 0);
+            if (charge.electricityBill > 0) { billBreakdownHTML += `<div class="flex justify-between"><span class="font-medium text-gray-500">Electricity (${monthName} ${year}):</span><span>₹${charge.electricityBill.toLocaleString('en-IN')}</span></div>`; }
+            if (charge.otherCharges > 0) { billBreakdownHTML += `<div class="flex justify-between"><span class="font-medium text-gray-500">Other Charges (${monthName} ${year}):</span><span>₹${charge.otherCharges.toLocaleString('en-IN')}</span></div>`; }
+        });
+    }
+
+    let lateFee = 0;
+    const daysOverdue = Math.max(0, Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24)));
+    if (daysOverdue > settings.gracePeriodDays) {
+        lateFee = (daysOverdue - settings.gracePeriodDays) * settings.lateFeePerDay;
+        totalDue += lateFee;
+        if (lateFee > 0) billBreakdownHTML += `<div class="flex justify-between text-red-600"><span class="font-medium">Late Fee:</span><span>₹${lateFee.toLocaleString('en-IN')}</span></div>`;
+    }
+    
+    const dueDateFormatted = dueDate.toLocaleDateString('en-IN', longDateOptions);
+    const cardClass = tenant.status === 'Overdue' ? 'border-red-500' : 'border-yellow-500';
+    card.className = `bg-white p-6 sm:p-8 rounded-2xl shadow-sm border-l-4 ${cardClass}`;
+    card.innerHTML = `<h2 class="text-lg font-semibold text-gray-500 mb-2">Total Amount Due</h2>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+                <p class="text-5xl font-extrabold text-gray-800">₹${totalDue.toLocaleString('en-IN')}</p>
+                <p class="font-semibold mt-1">Due by: ${dueDateFormatted}</p>
+            </div>
+            <a href="tenant-payment.html?tid=${tenantId}" class="w-full md:w-auto mt-6 md:mt-0 text-white font-bold py-4 px-8 rounded-lg hover:brightness-110 flex items-center justify-center space-x-2 text-lg" style="background-color: var(--theme-color);">
+                <i data-lucide="shield-check" class="w-6 h-6"></i><span>Pay Now</span>
+            </a>
+        </div>
+        <div class="mt-6 pt-6 border-t border-gray-100 text-sm text-gray-600 space-y-2">${billBreakdownHTML}</div>
+        <div class="mt-4 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-xs flex items-center space-x-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
+            <p>A late fee of ₹${settings.lateFeePerDay}/day will be charged after a ${settings.gracePeriodDays} day grace period.</p>
+        </div>`;
+  }
+
+  function populateRecentPayments(payments) {
+      const tableBody = document.getElementById('payment-history-tbody');
+      if (payments.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No payment history found.</td></tr>`;
+          return;
+      }
+      tableBody.innerHTML = payments.map(p => {
+          const paymentDate = new Date(p.date.seconds * 1000).toLocaleDateString('en-IN', longDateOptions);
+          return `<tr class="border-b border-gray-100">
+            <td class="p-4 text-xs font-mono text-gray-600">${p.id.substring(0,10)}...</td>
+            <td class="p-4">${paymentDate}</td>
+            <td class="p-4">${p.paymentMode || 'N/A'}</td>
+            <td class="p-4 font-semibold">₹${p.amount.toLocaleString('en-IN')}</td>
+            <td class="p-4 text-center"><a href="receipt.html?id=${p.id}" target="_blank" class="font-semibold hover:underline" style="color: var(--theme-color);">View</a></td>
+          </tr>`;
+      }).join('');
+  }
+
+  // Mobile Nav and Profile Dropdown Logic
+  const menuBtn = document.getElementById('menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  const menuOverlay = document.getElementById('menu-overlay');
+  const closeMenuBtn = document.getElementById('close-menu-btn');
+  const profileBtn = document.getElementById('profile-btn');
+  const profileDropdown = document.getElementById('profile-dropdown');
+  const logoutBtn = document.getElementById('logout-btn');
+  const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+
+  menuBtn.addEventListener('click', () => {
+      mobileMenu.classList.remove('-translate-x-full');
+      menuOverlay.classList.remove('hidden');
+  });
+  closeMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.add('-translate-x-full');
+      menuOverlay.classList.add('hidden');
+  });
+  menuOverlay.addEventListener('click', () => {
+      mobileMenu.classList.add('-translate-x-full');
+      menuOverlay.classList.add('hidden');
+  });
+  profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      profileDropdown.classList.toggle('hidden');
+  });
+  const handleTenantLogout = () => {
+    showConfirmModal('Logout', 'Are you sure you want to log out?', () => {
+        signOut(auth).catch(error => console.error('Sign Out Error', error));
+    });
+  };
+  logoutBtn.addEventListener('click', handleTenantLogout);
+  mobileLogoutBtn.addEventListener('click', handleTenantLogout);
+  
+  document.addEventListener('click', (e) => {
+      if (!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+          profileDropdown.classList.add('hidden');
+      }
+  });
+</script>
+</body>
+</html>

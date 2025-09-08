@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Shekhawat Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        #mobile-menu { transition: transform 0.3s ease-in-out; }
+        @keyframes toast-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes toast-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
+        .toast-in { animation: toast-in 0.3s ease forwards; }
+        .toast-out { animation: toast-out 0.3s ease forwards; }
+        .color-swatch { transition: transform 0.2s; }
+        .color-swatch.selected {
+          transform: scale(1.2);
+          box-shadow: 0 0 0 3px white, 0 0 0 5px var(--theme-color);
+        }
+    </style>
+    <script>
+      const savedThemeColor = localStorage.getItem('themeColor') || '#edbf6d';
+      document.documentElement.style.setProperty('--theme-color', savedThemeColor);
+    </script>
+</head>
+<body class="text-gray-800">
+    <div id="mobile-menu" class="fixed top-0 left-0 w-72 h-full bg-white shadow-lg z-50 transform -translate-x-full md:hidden flex flex-col p-4">
+        <div class="flex justify-between items-center pb-4 border-b mb-4">
+            <img src="logo.png" alt="Shekhawat Properties Logo" class="h-8 w-auto">
+            <button id="close-menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <nav class="flex flex-col space-y-2">
+            <a href="tenant-dashboard.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="w-4 h-4 mr-3"></i>Dashboard</a>
+            <a href="tenant-payment-history.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="history" class="w-4 h-4 mr-3"></i>Payment History</a>
+            <a href="tenant-documents.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i>Documents</a>
+            <a href="tenant-profile.html" class="flex items-center px-3 py-2 text-white rounded-lg font-semibold text-sm" style="background-color: var(--theme-color);"><i data-lucide="user" class="w-4 h-4 mr-3"></i>My Profile</a>
+        </nav>
+
+        <div class="mt-auto">
+            <nav class="flex flex-col space-y-2 mb-4">
+                 <hr class="my-1">
+                 <button id="mobile-logout-btn" class="flex items-center px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm w-full"><i data-lucide="log-out" class="w-4 h-4 mr-3"></i>Logout</button>
+            </nav>
+            <div class="border-t pt-4">
+                 <div class="flex items-center">
+                    <img id="sidebar-profile-img" src="https://placehold.co/40x40/e0e7ff/4f46e5?text=U" alt="Tenant" class="w-10 h-10 rounded-full">
+                    <div class="ml-3">
+                        <p id="sidebar-user-name" class="text-sm font-semibold text-gray-800">Loading...</p>
+                        <p id="sidebar-user-email" class="text-xs text-gray-500">Loading...</p>
+                    </div>
+                 </div>
+            </div>
+        </div>
+      </div>
+    <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+
+    <div class="p-4 lg:p-8">
+        <header class="bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm mb-8">
+            <div class="flex items-center space-x-2 sm:space-x-8">
+                <button id="menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full md:hidden">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <img src="logo.png" alt="Shekhawat Properties Logo" class="h-8 w-auto">
+                <nav class="hidden md:flex items-center space-x-1">
+                    <a href="tenant-dashboard.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Dashboard</a>
+                    <a href="tenant-payment-history.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Payment History</a>
+                    <a href="tenant-documents.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Documents</a>
+                    <a href="tenant-profile.html" class="px-3 py-2 text-white rounded-lg font-semibold text-sm" style="background-color: var(--theme-color);">My Profile</a>
+                </nav>
+            </div>
+            <div class="hidden md:flex items-center space-x-4">
+                <div class="text-right">
+                    <p id="tenant-name-header" class="font-semibold">Loading...</p>
+                    <p id="tenant-id-header" class="text-xs text-gray-500">ID: ...</p>
+                </div>
+                <div class="relative">
+                    <button id="profile-btn" class="flex items-center justify-center focus:outline-none">
+                        <img src="https://placehold.co/40x40/e0e7ff/4f46e5?text=U" alt="Tenant" class="w-10 h-10 rounded-full" id="tenant-avatar-header">
+                    </button>
+                    <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                        <button id="logout-btn" class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="log-out" class="w-4 h-4 mr-2"></i>Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <header class="mb-8">
+                <h1 class="text-4xl font-bold text-gray-900">My Profile</h1>
+                <p class="text-gray-500 mt-1">View and manage your personal and property details.</p>
+            </header>
+
+            <div class="max-w-4xl mx-auto space-y-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm">
+                    <h2 class="text-xl font-bold">Personal Information</h2>
+                    <div class="mt-4 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Full Name</label>
+                                <p id="name" class="mt-1 font-semibold">Loading...</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Phone Number</label>
+                                <p id="phone" class="mt-1 font-semibold">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-2xl shadow-sm">
+                    <h2 class="text-xl font-bold mb-4">Property & Rent Details</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500">Property</p>
+                            <p id="property-name" class="font-semibold text-base">Loading...</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500">Current Monthly Rent</p>
+                            <p id="current-rent" class="font-semibold text-base">Loading...</p>
+                        </div>
+                         <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500">Rent Due Day</p>
+                            <p id="rent-due-day" class="font-semibold text-base">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm">
+                    <h2 class="text-xl font-bold">Appearance</h2>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-600">Theme Color</label>
+                        <div id="color-palette" class="mt-2 flex space-x-3">
+                            <button data-color="#edbf6d" class="color-swatch w-8 h-8 rounded-full" style="background-color: #edbf6d;"></button>
+                            <button data-color="#059669" class="color-swatch w-8 h-8 rounded-full bg-emerald-600"></button>
+                            <button data-color="#db2777" class="color-swatch w-8 h-8 rounded-full bg-pink-600"></button>
+                            <button data-color="#64748b" class="color-swatch w-8 h-8 rounded-full bg-slate-500"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-red-500">
+                    <h2 class="text-xl font-bold mb-4">Account Actions</h2>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold">Logout</p>
+                            <p class="text-sm text-gray-500">You will be returned to the login screen.</p>
+                        </div>
+                        <button id="desktop-logout-btn" class="bg-red-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-red-700 flex items-center space-x-2">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
+    <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-5 border-b flex items-center space-x-3">
+                <div class="bg-red-100 p-2 rounded-full"><i data-lucide="alert-triangle" class="w-6 h-6 text-red-600"></i></div>
+                <h2 id="confirm-modal-title" class="text-2xl font-bold text-gray-800">Confirm Action</h2>
+            </div>
+            <div class="p-6"><p id="confirm-modal-message" class="text-gray-600">Are you sure?</p></div>
+            <div class="p-5 bg-gray-50 flex justify-end space-x-4 rounded-b-lg">
+                <button id="cancel-action-btn" class="px-5 py-2 rounded-lg text-gray-800 bg-gray-200 hover:bg-gray-300 font-semibold">Cancel</button>
+                <button id="confirm-action-btn" class="px-5 py-2 rounded-lg text-white font-semibold bg-red-600 hover:bg-red-700">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const colorPalette = document.getElementById('color-palette');
+
+        const applyThemeColor = (color) => {
+            document.documentElement.style.setProperty('--theme-color', color);
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.classList.toggle('selected', swatch.dataset.color === color);
+            });
+        };
+
+        colorPalette.addEventListener('click', (e) => {
+            const swatch = e.target.closest('.color-swatch');
+            if (!swatch) return;
+            localStorage.setItem('themeColor', swatch.dataset.color);
+            location.reload();
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const loginTimestamp = localStorage.getItem('tenantLoginTimestamp');
+                const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+                if (loginTimestamp && (Date.now() - loginTimestamp > SESSION_DURATION)) {
+                    await signOut(auth);
+                    return;
+                }
+
+                let tenantSnap = await getDoc(doc(db, "tenants", user.uid));
+                if (!tenantSnap.exists() || tenantSnap.data().status === 'Archived') {
+                    const q = query(collection(db, "tenants"), where("email", "==", user.email), where("status", "!=", "Archived"));
+                    const querySnapshot = await getDocs(q);
+                    if (!querySnapshot.empty) tenantSnap = querySnapshot.docs[0];
+                }
+
+                if (tenantSnap && tenantSnap.exists()) {
+                    // Apply theme color after we know the user is logged in
+                    applyThemeColor(localStorage.getItem('themeColor') || '#edbf6d');
+
+                    const tenantData = tenantSnap.data();
+                    const avatarUrl = tenantData.imageUrl || `https://placehold.co/40x40/e0e7ff/4f46e5?text=${tenantData.name.charAt(0)}`;
+
+                    document.getElementById('tenant-name-header').textContent = tenantData.name;
+                    document.getElementById('tenant-id-header').textContent = `ID: ${tenantSnap.id.substring(0, 6).toUpperCase()}`;
+                    document.getElementById('tenant-avatar-header').src = avatarUrl;
+                    document.getElementById('sidebar-profile-img').src = avatarUrl;
+                    document.getElementById('sidebar-user-name').textContent = tenantData.name;
+                    document.getElementById('sidebar-user-email').textContent = tenantData.email;
+                    
+                    document.getElementById('name').textContent = tenantData.name;
+                    document.getElementById('phone').textContent = tenantData.phone || 'N/A';
+                    
+                    if (tenantData.propertyId) {
+                        const propertyRef = doc(db, "properties", tenantData.propertyId);
+                        const propertySnap = await getDoc(propertyRef);
+                        document.getElementById('property-name').textContent = propertySnap.exists() ? propertySnap.data().name : 'Property not found';
+                    } else {
+                        document.getElementById('property-name').textContent = 'Not Assigned';
+                    }
+                    
+                    document.getElementById('current-rent').textContent = `₹${(tenantData.rent || 0).toLocaleString('en-IN')}`;
+                    document.getElementById('rent-due-day').textContent = `~${tenantData.rentDueDay}th of every month`;
+                } else {
+                    console.error("No tenant data found for this user.");
+                    window.location.href = 'index.html';
+                }
+            } else {
+                localStorage.removeItem('tenantLoginTimestamp');
+                window.location.href = 'index.html';
+            }
+        });
+
+        const showToast = (message, type = 'error') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+            const icon = type === 'success' ? '<i data-lucide="check-circle" class="w-5 h-5"></i>' : '<i data-lucide="alert-circle" class="w-5 h-5"></i>';
+            toast.className = `flex items-center space-x-3 p-3 rounded-lg text-white font-semibold shadow-lg toast-in ${bgColor}`;
+            toast.innerHTML = `${icon}<span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => {
+                toast.classList.remove('toast-in');
+                toast.classList.add('toast-out');
+                toast.addEventListener('animationend', () => toast.remove());
+            }, 4000);
+        };
+
+        let confirmCallback = null;
+        const showConfirmModal = (title, message, onConfirm) => {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-message').innerHTML = message;
+            confirmCallback = onConfirm;
+            document.getElementById('confirmation-modal').classList.remove('hidden');
+        };
+        const closeModal = () => { document.getElementById('confirmation-modal').classList.add('hidden'); confirmCallback = null; };
+        document.getElementById('confirm-action-btn').addEventListener('click', () => { if (confirmCallback) confirmCallback(); closeModal(); });
+        document.getElementById('cancel-action-btn').addEventListener('click', closeModal);
+
+        const handleTenantLogout = () => {
+            showConfirmModal('Logout', 'Are you sure you want to log out?', () => {
+                signOut(auth).catch((error) => {
+                    console.error('Sign Out Error', error);
+                    showToast('Could not log out. Please try again.', 'error');
+                });
+            });
+        };
+        
+        document.getElementById('logout-btn').addEventListener('click', handleTenantLogout);
+        document.getElementById('mobile-logout-btn').addEventListener('click', handleTenantLogout);
+        document.getElementById('desktop-logout-btn').addEventListener('click', handleTenantLogout);
+        
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const closeMenuBtn = document.getElementById('close-menu-btn');
+        const profileBtn = document.getElementById('profile-btn');
+        const profileDropdown = document.getElementById('profile-dropdown');
+
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.remove('-translate-x-full');
+            menuOverlay.classList.remove('hidden');
+        });
+        closeMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.add('-translate-x-full');
+            menuOverlay.classList.add('hidden');
+        });
+        menuOverlay.addEventListener('click', () => {
+            mobileMenu.classList.add('-translate-x-full');
+            menuOverlay.classList.add('hidden');
+        });
+        profileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            if (!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+                profileDropdown.classList.add('hidden');
+            }
+        });
+
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>

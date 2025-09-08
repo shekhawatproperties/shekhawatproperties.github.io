@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #e5e7eb; }
+        @media print {
+            body { background-color: white; }
+            .no-print { display: none !important; }
+            .receipt-container { 
+                box-shadow: none !important; 
+                border: none !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+        .paid-stamp {
+            border: 4px solid;
+            padding: 0.25rem 1rem;
+            border-radius: 0.25rem;
+            transform: rotate(-15deg);
+            font-weight: 800;
+            font-size: 1.5rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+        .paid-stamp.paid {
+            color: #16a34a; /* green-600 */
+            border-color: #16a34a;
+        }
+        .paid-stamp.pending {
+            color: #f59e0b; /* yellow-500 */
+            border-color: #f59e0b;
+        }
+    </style>
+    <script>
+      // Sets theme color on initial load to prevent FOUC (Flash of Unstyled Content)
+      const savedThemeColor = localStorage.getItem('themeColor') || '#4f46e5';
+      const savedThemeRgb = localStorage.getItem('themeRgb') || '79, 70, 229';
+      document.documentElement.style.setProperty('--theme-color', savedThemeColor);
+      document.documentElement.style.setProperty('--theme-rgb', savedThemeRgb);
+    </script>
+</head>
+<body>
+    <div class="max-w-2xl mx-auto my-4 sm:my-10 p-4">
+        <div class="no-print mb-6 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+            <h1 class="text-xl font-bold text-gray-700">Receipt Preview</h1>
+            <div class="flex space-x-2">
+                <button id="print-btn" class="text-white font-semibold py-2 px-4 rounded-lg hover:brightness-110 flex items-center justify-center space-x-2 text-sm w-32" style="background-color: var(--theme-color, #4f46e5);">
+                    <i data-lucide="printer" class="w-5 h-5"></i>
+                    <span>Print</span>
+                </button>
+                <button id="close-btn" class="bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center space-x-2 text-sm w-32">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                    <span>Close</span>
+                </button>
+            </div>
+        </div>
+        <div id="receipt-container" class="receipt-container bg-white p-8 md:p-12 rounded-lg shadow-lg border">
+            <div id="loading-state" class="text-center text-gray-500">
+                <div class="animate-spin w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-4" style="border-top-color: var(--theme-color);"></div>
+                Loading receipt...
+            </div>
+            
+            <div id="content-state" class="hidden">
+                <header class="relative flex flex-col sm:flex-row justify-between items-start pb-6 border-b-2 border-gray-200">
+                    <div class="flex items-center space-x-4">
+                        <img src="logo.png" alt="Shekhawat Properties Logo" class="h-12 w-auto">
+                        <div class="self-end pb-1">
+                            <h2 id="business-name-header" class="hidden">Shekhawat Market</h2>
+                            <p class="text-gray-500">Payment Receipt</p>
+                        </div>
+                    </div>
+                    <div id="status-stamp-container" class="absolute top-0 right-0 mt-2 sm:mt-0">
+                        <!-- Status stamp will be inserted here by JS -->
+                    </div>
+                </header>
+
+                <section class="my-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-500 uppercase mb-2">Paid By</h3>
+                        <p id="tenant-name" class="text-lg font-bold">...</p>
+                        <p id="property-name" class="text-gray-600">...</p>
+                    </div>
+                     <div class="text-left sm:text-right space-y-2 mt-4 sm:mt-0">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-500 uppercase">Receipt #</h3>
+                            <p id="receipt-id" class="font-mono">...</p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-500 uppercase">Payment Mode</h3>
+                            <p id="payment-mode" class="font-semibold">...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="p-3 font-semibold text-slate-600">Description</th>
+                                <th class="p-3 font-semibold text-slate-600 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="breakdown-table"></tbody>
+                        <tfoot>
+                            <tr class="font-bold text-lg border-t-2">
+                                <td class="p-3">Total Paid</td>
+                                <td id="total-amount" class="p-3 text-right">₹0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </section>
+                 <section class="mt-6" id="notes-section" class="hidden">
+                    <h3 class="text-sm font-semibold text-gray-500 uppercase mb-2">Notes</h3>
+                    <p id="notes-content" class="text-sm text-gray-600 bg-gray-50 p-3 rounded-md"></p>
+                </section>
+
+                <section class="mt-8 pt-6 border-t-2 border-dashed">
+                    <h3 class="text-sm font-semibold text-gray-500 uppercase mb-2">Transaction Timeline</h3>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <p><strong>Paid on:</strong> <span id="payment-date">...</span></p>
+                        <p id="verified-date-row" class="hidden"><strong>Verified on:</strong> <span id="verified-date">...</span></p>
+                    </div>
+                </section>
+
+                <footer class="mt-10 pt-6 border-t text-center">
+                    <p class="text-xs text-gray-400 mt-2">This is a computer-generated receipt.</p>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    import { db } from './firebase-config.js';
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    lucide.createIcons();
+
+    const loadingState = document.getElementById('loading-state');
+    const contentState = document.getElementById('content-state');
+    const formatCurrency = (value) => `₹${(value || 0).toLocaleString('en-IN')}`;
+    const formatDateTime = (timestamp) => new Date(timestamp.seconds * 1000).toLocaleString('en-IN', {
+        day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+    });
+
+    const populateReceipt = (paymentData, tenantData, propertyData, settingsData) => {
+        const paymentId = paymentData.id;
+        const payment = paymentData.data;
+        const tenant = tenantData.data;
+        const property = propertyData.data;
+        const settings = settingsData.data;
+        const isPending = paymentData.source === 'pendingPayments';
+
+        document.title = `Receipt #${paymentId.substring(0, 8).toUpperCase()}`;
+        document.getElementById('business-name-header').textContent = settings.businessName || 'Shekhawat Market';
+
+        document.getElementById('receipt-id').textContent = paymentId.substring(0, 8).toUpperCase();
+        
+        const submissionTimestamp = isPending ? payment.time : payment.date;
+        document.getElementById('payment-date').textContent = formatDateTime(submissionTimestamp);
+        
+        document.getElementById('tenant-name').textContent = tenant.name;
+        document.getElementById('property-name').textContent = `Property: ${property.name}`;
+        document.getElementById('payment-mode').textContent = payment.paymentMode || 'Online';
+
+        const breakdown = payment.breakdown || {};
+        const breakdownTable = document.getElementById('breakdown-table');
+        breakdownTable.innerHTML = '';
+        
+        const rowClass = "p-3 border-b border-slate-100";
+        let hasBreakdown = false;
+        if (breakdown.rent > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Base Rent</td><td class="${rowClass} text-right">${formatCurrency(breakdown.rent)}</td></tr>`; hasBreakdown = true; }
+        if (breakdown.electricity > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Electricity Bill</td><td class="${rowClass} text-right">${formatCurrency(breakdown.electricity)}</td></tr>`; hasBreakdown = true; }
+        if (breakdown.lateFee > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass} text-red-600">Late Fee</td><td class="${rowClass} text-right text-red-600">${formatCurrency(breakdown.lateFee)}</td></tr>`; hasBreakdown = true; }
+        if (breakdown.other > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Other Charges</td><td class="${rowClass} text-right">${formatCurrency(breakdown.other)}</td></tr>`; hasBreakdown = true; }
+        
+        if (!hasBreakdown) {
+             breakdownTable.innerHTML += `<tr><td class="${rowClass}">Total Payment</td><td class="${rowClass} text-right">${formatCurrency(payment.amount)}</td></tr>`;
+        }
+        
+        if (payment.notes) {
+            document.getElementById('notes-section').classList.remove('hidden');
+            document.getElementById('notes-content').textContent = payment.notes;
+        }
+
+        document.getElementById('total-amount').textContent = formatCurrency(payment.amount);
+
+        const statusContainer = document.getElementById('status-stamp-container');
+        if (isPending) {
+            statusContainer.innerHTML = `<div class="paid-stamp pending">Pending</div>`;
+        } else {
+            statusContainer.innerHTML = `<div class="paid-stamp paid">Paid</div>`;
+            if (payment.verifiedDate) {
+                document.getElementById('verified-date-row').classList.remove('hidden');
+                document.getElementById('verified-date').textContent = formatDateTime(payment.verifiedDate);
+            }
+        }
+    };
+
+    window.onload = async () => {
+        const params = new URLSearchParams(window.location.search);
+        const paymentId = params.get('id');
+
+        if (!paymentId) {
+            loadingState.textContent = 'Error: No Payment ID provided in the URL.';
+            return;
+        }
+
+        try {
+            let paymentSnap;
+            let paymentSource;
+
+            const verifiedPaymentRef = doc(db, "payments", paymentId);
+            paymentSnap = await getDoc(verifiedPaymentRef);
+            paymentSource = 'payments';
+
+            if (!paymentSnap.exists()) {
+                const pendingPaymentRef = doc(db, "pendingPayments", paymentId);
+                paymentSnap = await getDoc(pendingPaymentRef);
+                paymentSource = 'pendingPayments';
+            }
+
+            if (!paymentSnap.exists()) {
+                throw new Error(`Payment record with ID ${paymentId} was not found.`);
+            }
+
+            const paymentData = {id: paymentSnap.id, data: paymentSnap.data(), source: paymentSource};
+            
+            const settingsRef = doc(db, "settings", "businessInfo");
+            const settingsSnap = await getDoc(settingsRef);
+            if (!settingsSnap.exists()) throw new Error("Business settings not found.");
+            const settingsData = {id: settingsSnap.id, data: settingsSnap.data()};
+
+            const tenantId = paymentData.data.tenantId;
+            if (!tenantId) throw new Error("Tenant ID is missing from the payment record.");
+            
+            const tenantRef = doc(db, "tenants", tenantId);
+            const tenantSnap = await getDoc(tenantRef);
+            if (!tenantSnap.exists()) throw new Error(`Tenant with ID ${tenantId} not found.`);
+            const tenantData = {id: tenantSnap.id, data: tenantSnap.data()};
+
+            const propertyId = tenantData.data.propertyId;
+            if (!propertyId) throw new Error("Property ID is missing from the tenant record.");
+
+            const propertyRef = doc(db, "properties", propertyId);
+            const propertySnap = await getDoc(propertyRef);
+            if (!propertySnap.exists()) throw new Error(`Property with ID ${propertyId} not found.`);
+            const propertyData = {id: propertySnap.id, data: propertySnap.data()};
+
+            populateReceipt(paymentData, tenantData, propertyData, settingsData);
+            loadingState.classList.add('hidden');
+            contentState.classList.remove('hidden');
+
+        } catch (error) {
+            console.error("Error loading receipt:", error);
+            loadingState.innerHTML = `<p class="text-red-500 font-semibold">Error loading receipt:</p><p class="text-sm text-gray-600 mt-2">${error.message}</p>`;
+        }
+    };
+    
+    document.getElementById('print-btn').addEventListener('click', () => window.print());
+    document.getElementById('close-btn').addEventListener('click', () => window.close());
+</script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Properties - Shekhawat Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+        .modal-body::-webkit-scrollbar { width: 6px; }
+        .modal-body::-webkit-scrollbar-track { background: #f1f5f9; }
+        .modal-body::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+        #mobile-menu { transition: transform 0.3s ease-in-out; }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 1.25rem;
+            bottom: -0.5rem;
+            width: 2px;
+            background-color: #e2e8f0;
+        }
+        .timeline-item:last-child::before {
+            display: none;
+        }
+        @keyframes toast-in { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes toast-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+        .toast-in { animation: toast-in 0.3s ease forwards; }
+        .toast-out { animation: toast-out 0.3s ease forwards; }
+    </style>
+    <script>
+      // Page load hone par theme color set karta hai
+      const savedThemeColor = localStorage.getItem('themeColor') || '#edbf6d';
+      const savedThemeRgb = localStorage.getItem('themeRgb') || '237, 191, 109';
+      document.documentElement.style.setProperty('--theme-color', savedThemeColor);
+      document.documentElement.style.setProperty('--theme-rgb', savedThemeRgb);
+    </script>
+</head>
+
+<body class="text-gray-800">
+
+    <div id="mobile-menu" class="fixed top-0 left-0 w-72 h-full bg-white shadow-lg z-50 transform -translate-x-full md:hidden flex flex-col p-4">
+        <div class="flex justify-between items-center pb-4 border-b mb-4">
+            <div class="flex items-center">
+                <img src="logo.png" alt="Shekhawat Properties Logo" class="h-7 w-auto">
+            </div>
+            <button id="close-menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <nav class="flex flex-col space-y-2">
+            <a href="dashboard.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="w-4 h-4 mr-3"></i>Dashboard</a>
+            <a href="tenants.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="users" class="w-4 h-4 mr-3"></i>Tenants</a>
+            <a href="properties.html" class="flex items-center px-3 py-2 text-white rounded-lg font-semibold text-sm" style="background-color: var(--theme-color);"><i data-lucide="building-2" class="w-4 h-4 mr-3"></i>Properties</a>
+            <a href="payments.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="indian-rupee" class="w-4 h-4 mr-3"></i>Payments</a>
+            <a href="charges.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="receipt" class="w-4 h-4 mr-3"></i>Charges</a>
+        </nav>
+
+        <div class="mt-auto">
+            <nav class="flex flex-col space-y-2 mb-4">
+                 <a href="expenses.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="trending-up" class="w-4 h-4 mr-3"></i>Expenses</a>
+                 <a href="documents.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i>Documents</a>
+                 <a href="reports.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="bar-chart-2" class="w-4 h-4 mr-3"></i>Reports</a>
+                 <hr class="my-1">
+                 <a href="settings.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="settings" class="w-4 h-4 mr-3"></i>Settings</a>
+                 <button id="mobile-logout-btn" class="flex items-center px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm w-full"><i data-lucide="log-out" class="w-4 h-4 mr-3"></i>Logout</button>
+            </nav>
+            <div class="border-t pt-4">
+                 <div class="flex items-center">
+                    <img id="sidebar-profile-img" src="https://api.dicebear.com/8.x/adventurer/svg?seed=admin" alt="Admin" class="w-10 h-10 rounded-full">
+                    <div class="ml-3">
+                        <p id="sidebar-user-name" class="text-sm font-semibold text-gray-800">Admin</p>
+                        <p id="sidebar-user-email" class="text-xs text-gray-500">Loading...</p>
+                    </div>
+                 </div>
+            </div>
+        </div>
+    </div>
+    <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+
+    <div class="p-4 lg:p-8">
+        <header class="bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm mb-8">
+            <div class="flex items-center space-x-2 md:space-x-8">
+                <button id="menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full md:hidden"><i data-lucide="menu" class="w-6 h-6"></i></button>
+                <div class="flex items-center">
+                  <img src="logo.png" alt="Shekhawat Properties Logo" class="h-8 w-auto">
+                </div>
+                 <nav class="hidden md:flex items-center space-x-1">
+                    <a href="dashboard.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Dashboard</a>
+                    <a href="tenants.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Tenants</a>
+                    <a href="properties.html" class="px-3 py-2 text-white rounded-lg font-semibold text-sm" style="background-color: var(--theme-color);">Properties</a>
+                    <a href="payments.html" id="nav-payments-link" class="relative px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Payments</a>
+                    <a href="charges.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Charges</a>
+                </nav>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="notification-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative"><i data-lucide="bell" class="w-6 h-6"></i><span id="notification-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center"></span></button>
+                <div class="relative hidden md:block">
+                    <button id="profile-btn" class="flex items-center justify-center focus:outline-none">
+                        <img id="header-profile-img" src="https://api.dicebear.com/8.x/adventurer/svg?seed=admin" alt="Admin" class="w-10 h-10 rounded-full">
+                    </button>
+                    <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                        <a href="expenses.html" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="trending-up" class="w-4 h-4 mr-2"></i>Expenses</a>
+                        <a href="documents.html" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="file-text" class="w-4 h-4 mr-2"></i>Documents</a>
+                        <a href="reports.html" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="bar-chart-2" class="w-4 h-4 mr-2"></i>Reports</a>
+                        <hr class="my-1">
+                        <a href="settings.html" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="settings" class="w-4 h-4 mr-2"></i>Settings</a>
+                        <button id="logout-btn" class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="log-out" class="w-4 h-4 mr-2"></i>Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <header class="flex flex-col md:flex-row justify-between items-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Manage Properties</h1>
+                <button id="add-property-btn" class="w-full md:w-auto text-white font-semibold py-2 px-5 rounded-lg hover:brightness-110 transition flex items-center justify-center space-x-2 mt-4 md:mt-0" style="background-color: var(--theme-color);">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    <span>Add New Property</span>
+                </button>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4"><div class="bg-blue-100 p-3 rounded-full"><i data-lucide="building-2" class="w-6 h-6 text-blue-600"></i></div><div><p class="text-gray-500 text-sm">Total Properties</p><p id="total-properties" class="text-2xl font-bold">0</p></div></div>
+                <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4"><div class="bg-green-100 p-3 rounded-full"><i data-lucide="check-circle-2" class="w-6 h-6 text-green-600"></i></div><div><p class="text-gray-500 text-sm">Occupied</p><p id="occupied-properties" class="text-2xl font-bold">0</p></div></div>
+                <div class="bg-white p-5 rounded-xl shadow-sm flex items-center space-x-4"><div class="bg-amber-100 p-3 rounded-full"><i data-lucide="clock" class="w-6 h-6 text-amber-600"></i></div><div><p class="text-gray-500 text-sm">Vacant</p><p id="vacant-properties" class="text-2xl font-bold">0</p></div></div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">Property List</h2>
+                    <div class="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4 mt-4 md:mt-0 w-full md:w-auto">
+                        <input type="text" id="search-input" placeholder="Search by name..." class="w-full md:w-64 pl-4 pr-4 py-2 rounded-lg border border-gray-300 text-sm">
+                        <select id="type-filter" class="w-full md:w-auto rounded-md border-gray-300 shadow-sm text-sm py-2">
+                            <option value="all">All Types</option>
+                            <option value="Shop">Shop</option>
+                            <option value="Room">Room</option>
+                            <option value="Flat">Flat</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="border-b-2 border-gray-200">
+                             <tr>
+                                <th class="p-4 font-semibold">Property Name</th>
+                                <th class="p-4 font-semibold">Type</th>
+                                <th class="p-4 font-semibold">Status</th>
+                                <th class="p-4 font-semibold">Current Tenant</th>
+                                <th class="p-4 font-semibold">Rent (₹)</th>
+                                <th class="p-4 font-semibold text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="property-table-body">
+                           <tr><td colspan="6" class="p-4 text-center text-gray-500">Loading properties...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="property-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div class="p-6 border-b"><h2 id="modal-title" class="text-2xl font-bold">Add New Property</h2></div>
+            <div class="p-6 max-h-[70vh] overflow-y-auto modal-body">
+                <form id="property-form" class="space-y-4">
+                    <div><label for="name" class="block text-sm font-medium text-gray-600">Property Name / Number</label><input type="text" id="name" name="name" placeholder="e.g., Shop 1, Room 5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required></div>
+                    <div><label for="type" class="block text-sm font-medium text-gray-600">Property Type</label><select id="type" name="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"><option>Shop</option><option>Room</option><option>Flat</option></select></div>
+                    <div><label for="rent" class="block text-sm font-medium text-gray-600">Default Rent Amount (₹)</label><input type="number" id="rent" name="rent" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required></div>
+                    <div><label for="notes" class="block text-sm font-medium text-gray-600">Notes (Optional)</label><textarea id="notes" name="notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea></div>
+                </form>
+            </div>
+            <div class="p-6 bg-gray-50 flex justify-end space-x-4 rounded-b-lg">
+                <button type="button" id="cancel-property-btn" class="px-6 py-2 rounded-lg text-gray-800 bg-gray-200 hover:bg-gray-300 font-semibold">Cancel</button>
+                <button type="submit" form="property-form" id="save-property-btn" class="px-6 py-2 rounded-lg text-white font-semibold hover:brightness-110 transition" style="background-color: var(--theme-color);">Save Property</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="activity-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-2xl font-bold">Recent Activities</h2>
+                <button id="close-activity-modal" class="text-gray-500 hover:text-gray-800 p-2 rounded-full">&times;</button>
+            </div>
+            <div id="activity-list" class="p-6 max-h-[70vh] overflow-y-auto">
+               <p class="text-center text-gray-500 text-sm py-4">No recent activities.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-2"></div>
+
+<script type="module" src="shared-admin.js"></script>
+<script type="module" src="properties.js"></script>
+</body>
+</html>

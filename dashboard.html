@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rent Management Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        #mobile-menu {
+            transition: transform 0.3s ease-in-out;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 1.25rem;
+            bottom: -0.5rem;
+            width: 2px;
+            background-color: #e2e8f0;
+        }
+        .timeline-item:last-child::before {
+            display: none;
+        }
+        .custom-select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236B7280" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1em;
+            padding-right: 2rem;
+        }
+        /* ADDED: CSS for Toast Notifications */
+        @keyframes toast-in { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes toast-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+        .toast-in { animation: toast-in 0.3s ease forwards; }
+        .toast-out { animation: toast-out 0.3s ease forwards; }
+    </style>
+    <script>
+      // Sets theme color on initial load to prevent FOUC (Flash of Unstyled Content)
+      const savedThemeColor = localStorage.getItem('themeColor') || '#edbf6d';
+      const savedThemeRgb = localStorage.getItem('themeRgb') || '237, 191, 109';
+      document.documentElement.style.setProperty('--theme-color', savedThemeColor);
+      document.documentElement.style.setProperty('--theme-rgb', savedThemeRgb);
+    </script>
+</head>
+<body class="text-gray-800">
+
+    <div id="mobile-menu" class="fixed top-0 left-0 w-72 h-full bg-white shadow-lg z-50 transform -translate-x-full md:hidden flex flex-col p-4">
+    <div class="flex justify-between items-center pb-4 border-b mb-4">
+        <div class="flex items-center">
+            <img src="logo.png" alt="Shekhawat Properties Logo" class="h-7 w-auto">
+        </div>
+        <button id="close-menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
+            <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <nav class="flex flex-col space-y-2">
+        <a href="dashboard.html" class="flex items-center px-3 py-2 text-white rounded-lg font-semibold text-sm" style="background-color: var(--theme-color);"><i data-lucide="layout-dashboard" class="w-4 h-4 mr-3"></i>Dashboard</a>
+        <a href="tenants.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="users" class="w-4 h-4 mr-3"></i>Tenants</a>
+        <a href="properties.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="building-2" class="w-4 h-4 mr-3"></i>Properties</a>
+        <a href="payments.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="indian-rupee" class="w-4 h-4 mr-3"></i>Payments</a>
+        <a href="charges.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="receipt" class="w-4 h-4 mr-3"></i>Charges</a>
+    </nav>
+
+    <div class="mt-auto">
+        <nav class="flex flex-col space-y-2 mb-4">
+             <a href="expenses.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="trending-up" class="w-4 h-4 mr-3"></i>Expenses</a>
+             <a href="documents.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i>Documents</a>
+             <a href="reports.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="bar-chart-2" class="w-4 h-4 mr-3"></i>Reports</a>
+             <hr class="my-1"> <a href="settings.html" class="flex items-center px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"><i data-lucide="settings" class="w-4 h-4 mr-3"></i>Settings</a>
+             <button id="mobile-logout-btn" class="flex items-center px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm w-full"><i data-lucide="log-out" class="w-4 h-4 mr-3"></i>Logout</button>
+        </nav>
+        <div class="border-t pt-4">
+             <div class="flex items-center">
+                <img id="sidebar-profile-img" src="https://api.dicebear.com/8.x/adventurer/svg?seed=admin" alt="Admin" class="w-10 h-10 rounded-full">
+                <div class="ml-3">
+                    <p id="sidebar-user-name" class="text-sm font-semibold text-gray-800">Admin</p>
+                    <p id="sidebar-user-email" class="text-xs text-gray-500">Loading...</p>
+                </div>
+             </div>
+        </div>
+    </div>
+</div>
+    <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+
+
+    <div class="p-4 lg:p-8">
+        <header class="bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm mb-8">
+            <div class="flex items-center space-x-2 md:space-x-8">
+                <button id="menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full md:hidden">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div class="flex items-center">
+                  <img src="logo.png" alt="Shekhawat Properties Logo" class="h-8 w-auto">
+                </div>
+                <nav class="hidden md:flex items-center space-x-1">
+                    <a href="dashboard.html" class="px-3 py-2 text-white rounded-lg font-semibold text-sm" style="background-color: var(--theme-color);">Dashboard</a>
+                    <a href="tenants.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Tenants</a>
+                    <a href="properties.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Properties</a>
+                    <a href="payments.html" id="nav-payments-link" class="relative px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Payments</a>
+                    <a href="charges.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Charges</a>
+                </nav>
+            </div>
+            
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                 <div class="relative">
+                    <button id="notification-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative">
+                        <i data-lucide="bell" class="w-6 h-6"></i>
+                        <span id="notification-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center"></span>
+                    </button>
+                </div>
+                <div class="relative hidden md:block">
+    <button id="profile-btn" class="flex items-center justify-center focus:outline-none">
+        <img id="header-profile-img" src="https://api.dicebear.com/8.x/adventurer/svg?seed=admin" alt="Admin" class="w-10 h-10 rounded-full">
+    </button>
+                    <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                        <a href="expenses.html" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="trending-up" class="w-4 h-4 mr-2"></i>Expenses</a>
+                        <a href="documents.html" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="file-text" class="w-4 h-4 mr-2"></i>Documents</a>
+                        <a href="reports.html" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="bar-chart-2" class="w-4 h-4 mr-2"></i>Reports</a>
+                        <hr class="my-1">
+                        <a href="settings.html" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="settings" class="w-4 h-4 mr-2"></i>Settings</a>
+                        <button id="logout-btn" class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i data-lucide="log-out" class="w-4 h-4 mr-2"></i>Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="space-y-4">
+                    <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900">Overview</h2>
+                    <p class="text-gray-500" id="currentDate">Welcome back!</p>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm mt-6">
+                        <div class="flex justify-between items-start mb-2">
+                             <div class="flex items-center space-x-3">
+                                 <i data-lucide="landmark" class="w-8 h-8" style="color: var(--theme-color);"></i>
+                                 <h3 class="font-semibold text-gray-500">Total Rent Income</h3>
+                             </div>
+                            <div class="relative">
+                                <select id="income-filter" class="text-sm font-semibold bg-transparent border-0 rounded-md focus:ring-0 custom-select" style="color: var(--theme-color);">
+                                    <option value="all">Loading...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p id="total-income" class="text-4xl font-bold">₹0</p>
+                    </div>
+                </div>
+                <div class="space-y-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-center space-x-3 mb-2">
+                             <i data-lucide="calendar-days" class="w-8 h-8 text-green-500"></i>
+                            <div>
+                                <h3 class="font-semibold text-gray-500">Monthly Rent Income</h3>
+                                <p id="current-month-year" class="text-sm text-gray-400"></p>
+                            </div>
+                        </div>
+                        <p id="monthly-income" class="text-3xl font-bold">₹0</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-center space-x-3 mb-2">
+                             <i data-lucide="shield-check" class="w-8 h-8 text-blue-500"></i>
+                            <div>
+                                <h3 class="font-semibold text-gray-500">Total Deposits Held</h3>
+                                <p class="text-sm text-gray-400">From active tenants</p>
+                            </div>
+                        </div>
+                        <p id="total-deposits" class="text-3xl font-bold">₹0</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-8">
+                        <div class="bg-white p-6 rounded-2xl shadow-sm relative">
+                            <div class="flex justify-between items-start mb-2">
+                                 <div class="flex items-center space-x-3">
+                                     <i data-lucide="zap" class="w-7 h-7 text-yellow-500"></i>
+                                     <h3 class="font-semibold text-gray-500">Billed Electricity</h3>
+                                  </div>
+                                  <button id="electricity-menu-btn" class="p-1 text-gray-500 hover:bg-gray-100 rounded-full"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+                            </div>
+                            <p id="total-electricity" class="text-2xl font-bold">₹0</p>
+                            <div id="electricity-filter-dropdown" class="hidden absolute top-10 right-4 bg-white shadow-lg rounded-lg border p-2 z-10">
+                                <label class="text-xs text-gray-500 mb-1 block">Year</label>
+                                <select id="electricity-filter" class="text-sm bg-gray-100 border-gray-200 rounded p-1 custom-select"></select>
+                            </div>
+                        </div>
+                       <div class="bg-white p-6 rounded-2xl shadow-sm relative">
+                             <div class="flex justify-between items-start mb-2">
+                                 <div class="flex items-center space-x-3">
+                                     <i data-lucide="trending-up" class="w-7 h-7 text-red-500"></i>
+                                     <h3 class="font-semibold text-gray-500">Increment</h3>
+                                 </div>
+                                 <button id="increment-menu-btn" class="p-1 text-gray-500 hover:bg-gray-100 rounded-full"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+                             </div>
+                            <p id="increment-percentage" class="text-2xl font-bold text-gray-500">0%</p>
+                            <p id="increment-comparison-text" class="text-xs text-gray-400">vs Last Month</p>
+                            <div id="increment-filter-dropdown" class="hidden absolute top-10 right-4 bg-white shadow-lg rounded-lg border p-2 z-10 space-y-2">
+                                <label class="text-xs text-gray-500 mb-1 block">Compare Years</label>
+                                <div class="flex items-center space-x-2">
+                                    <select id="increment-year1" class="text-sm bg-gray-100 border-gray-200 rounded p-1 custom-select"></select>
+                                    <span class="text-xs">vs</span>
+                                    <select id="increment-year2" class="text-sm bg-gray-100 border-gray-200 rounded p-1 custom-select"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 lg:row-span-2 space-y-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">Collection Analysis</h3>
+                             <select id="collection-chart-filter" class="custom-select bg-white border border-gray-300 text-gray-700 py-1 pl-3 rounded-md leading-tight focus:outline-none focus:bg-white focus:border-gray-300 text-sm"></select>
+                        </div>
+                        <div class="h-80"><canvas id="collectionGraph"></canvas></div>
+                        <div id="collection-summary" class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-4"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                         <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">Income vs. Expense</h3>
+                            <select id="income-expense-chart-filter" class="custom-select bg-white border border-gray-300 text-gray-700 py-1 pl-3 rounded-md leading-tight focus:outline-none focus:bg-white focus:border-gray-300 text-sm"></select>
+                        </div>
+                        <div class="h-64"><canvas id="incomeExpenseChart"></canvas></div>
+                        <div id="income-expense-summary" class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-4"></div>
+                    </div>
+                </div>
+
+                <div class="order-first lg:order-none">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <h3 class="text-xl font-bold mb-4">Quick Actions</h3>
+                        <div class="space-y-3">
+                            <a href="payments.html" class="w-full py-3 px-4 text-white font-semibold rounded-lg hover:brightness-110 transition-colors flex items-center justify-center text-sm" style="background-color: var(--theme-color);"><i data-lucide="plus-circle" class="w-5 h-5 mr-2"></i>Record Payment</a>
+                            <button id="send-reminder-btn" class="w-full py-3 px-4 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center text-sm"><i data-lucide="message-square-plus" class="w-5 h-5 mr-2"></i>Send Reminders</button>
+                            <button id="update-notice-btn" class="w-full py-3 px-4 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center text-sm"><i data-lucide="megaphone" class="w-5 h-5 mr-2"></i>Update Notice</button>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <h3 class="text-xl font-bold mb-4">Payment Status</h3>
+                        <div class="h-48 w-48 mx-auto mb-4"><canvas id="paymentStatusChart"></canvas></div>
+                        <div id="payment-status-legend" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="reminder-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+        <div class="p-6 border-b flex justify-between items-center">
+            <h2 class="text-2xl font-bold">Send Payment Reminders</h2>
+            <button id="close-reminder-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+        </div>
+        <div class="p-6 max-h-[60vh] overflow-y-auto">
+            <p class="text-sm text-gray-600 mb-4">Click "Send" to open WhatsApp with a pre-filled reminder message for tenants with due or overdue payments.</p>
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b">
+                        <th class="p-2 font-semibold">Tenant</th>
+                        <th class="p-2 font-semibold">Property</th>
+                        <th class="p-2 font-semibold">Status</th>
+                        <th class="p-2 font-semibold text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="reminder-tenant-list">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="notice-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg">
+        <div class="p-6 border-b flex justify-between items-center">
+            <h2 class="text-2xl font-bold">Update Notice Board</h2>
+            <button id="close-notice-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+        </div>
+        <div class="p-6">
+            <label for="notice-message" class="block text-sm font-medium text-gray-700 mb-2">Notice Message</label>
+            <textarea id="notice-message" rows="4" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:border-gray-400" placeholder="Enter notice here..."></textarea>
+        </div>
+        <div class="p-6 bg-gray-50 flex justify-end space-x-4 rounded-b-lg">
+            <button id="clear-notice-btn" type="button" class="px-6 py-2 rounded-lg text-white font-semibold bg-red-600 hover:bg-red-700 mr-auto">Clear Notice</button>
+            <button id="cancel-notice-btn" type="button" class="px-6 py-2 rounded-lg text-gray-700 font-semibold bg-gray-100 hover:bg-gray-200">Cancel</button>
+            <button id="save-notice-btn" type="button" class="px-6 py-2 rounded-lg text-white font-semibold" style="background-color: var(--theme-color);">Post Notice</button>
+        </div>
+    </div>
+</div>
+
+<div id="activity-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+        <div class="p-6 border-b flex justify-between items-center">
+            <h2 class="text-2xl font-bold">Recent Activities</h2>
+            <button id="close-activity-modal" class="text-gray-500 hover:text-gray-800 p-2 rounded-full">&times;</button>
+        </div>
+        <div id="activity-list" class="p-6 max-h-[70vh] overflow-y-auto">
+           <p class="text-center text-gray-500 text-sm py-4">No recent activities.</p>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-2"></div>
+<script type="module" src="shared-admin.js"></script>
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>
