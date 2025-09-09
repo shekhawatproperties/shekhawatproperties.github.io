@@ -36,8 +36,7 @@ const elements = {
     activityModal: document.getElementById('activity-modal'),
     closeActivityModalBtn: document.getElementById('close-activity-modal'),
 };
-
-let allTenants = [], allProperties = [], allPayments = [], reminderTemplates = {};
+let allTenants = [], allProperties = [], allPayments = [], reminderTemplates = {}, paymentRules = {};
 let currentView = 'current', editingTenantId = null;
 let currentPage = 1, rowsPerPage = 10;
 
@@ -80,14 +79,24 @@ const checkAndUpdateTenantStatus = (tenant) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (!tenantData.dueDate || !tenantData.dueDate.seconds || tenantData.status === 'Paid') {
+    if (!tenantData.dueDate || !tenantData.dueDate.seconds) {
         return { updatedTenant: tenantData, wasUpdated };
     }
 
     const dueDate = new Date(tenantData.dueDate.seconds * 1000);
     dueDate.setHours(0, 0, 0, 0);
 
-    const newStatus = today > dueDate ? 'Overdue' : 'Due';
+    const windowOpenDate = new Date(dueDate);
+    windowOpenDate.setDate(dueDate.getDate() - (paymentRules.paymentWindowDaysBefore || 6));
+
+    let newStatus = tenantData.status;
+
+    if (newStatus === 'Paid' && today >= windowOpenDate) {
+        newStatus = 'Due';
+    } else if (newStatus === 'Due' && today >= dueDate) {
+        newStatus = 'Overdue';
+    }
+
     if (tenantData.status !== newStatus) {
         tenantData.status = newStatus;
         wasUpdated = true;
@@ -526,11 +535,19 @@ const saveTenant = async (e) => {
 
 const init = async () => {
     try {
-        const reminderTemplatesSnap = await getDoc(doc(db, "settings", "reminderMessages"));
+        const [reminderTemplatesSnap, paymentRulesSnap] = await Promise.all([
+            getDoc(doc(db, "settings", "reminderMessages")),
+            getDoc(doc(db, "settings", "paymentRules"))
+        ]);
         if (reminderTemplatesSnap.exists()) reminderTemplates = reminderTemplatesSnap.data();
+        if (paymentRulesSnap.exists()) paymentRules = paymentRulesSnap.data();
         
         onSnapshot(doc(db, "settings", "reminderMessages"), docSnap => {
             if (docSnap.exists()) reminderTemplates = docSnap.data();
+        });
+
+        onSnapshot(doc(db, "settings", "paymentRules"), docSnap => {
+            if (docSnap.exists()) paymentRules = docSnap.data();
         });
     } catch (error) {
         console.error("Error fetching settings:", error);
