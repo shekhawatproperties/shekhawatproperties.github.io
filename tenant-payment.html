@@ -16,21 +16,18 @@
         .toast-in { animation: toast-in 0.3s ease forwards; }
         .toast-out { animation: toast-out 0.3s ease forwards; }
     </style>
-     <script>
-      const savedThemeColor = localStorage.getItem('themeColor') || '#4f46e5';
+    <script>
+      const savedThemeColor = localStorage.getItem('themeColor') || '#edbf6d';
+      const savedThemeRgb = localStorage.getItem('themeRgb') || '237, 191, 109';
       document.documentElement.style.setProperty('--theme-color', savedThemeColor);
+      document.documentElement.style.setProperty('--theme-rgb', savedThemeRgb);
     </script>
 </head>
 <body class="text-gray-800">
 
     <div id="mobile-menu" class="fixed top-0 left-0 w-72 h-full bg-white shadow-lg z-50 transform -translate-x-full md:hidden flex flex-col p-4">
         <div class="flex justify-between items-center pb-4 border-b mb-4">
-            <div class="flex items-center space-x-2">
-                <div class="p-2 rounded-lg text-white" style="background-color: var(--theme-color);">
-                    <i data-lucide="home" class="w-5 h-5"></i>
-                </div>
-                <h1 class="text-lg font-bold text-gray-800">Shekhawat Market</h1>
-            </div>
+            <img src="logo.png" alt="Shekhawat Properties Logo" class="h-8 w-auto">
             <button id="close-menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
                 <i data-lucide="x" class="w-6 h-6"></i>
             </button>
@@ -67,12 +64,7 @@
                 <button id="menu-btn" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full md:hidden">
                     <i data-lucide="menu" class="w-6 h-6"></i>
                 </button>
-                <div class="flex items-center space-x-2">
-                  <div class="p-2 rounded-lg text-white" style="background-color: var(--theme-color);">
-                    <i data-lucide="home" class="w-6 h-6"></i>
-                  </div>
-                  <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Shekhawat Market</h1>
-                </div>
+                <img src="logo.png" alt="Shekhawat Properties Logo" class="h-8 w-auto">
                 <nav class="hidden md:flex items-center space-x-1">
                     <a href="tenant-dashboard.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Dashboard</a>
                     <a href="tenant-payment-history.html" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Payment History</a>
@@ -103,12 +95,7 @@
             </div>
 
             <div id="initial-view" class="hidden w-full max-w-md bg-white p-8 rounded-2xl shadow-lg text-center">
-                <div class="mx-auto flex items-center justify-center space-x-3">
-                    <div class="p-3 rounded-lg text-white" style="background-color: var(--theme-color);">
-                        <i data-lucide="landmark" class="w-6 h-6"></i>
-                    </div>
-                    <h1 id="business-name" class="text-2xl font-bold text-gray-800">Shekhawat Market</h1>
-                </div>
+                <img src="logo.png" alt="Shekhawat Properties Logo" class="h-10 w-auto mx-auto mb-4">
                 <p class="text-gray-500 mt-4">You are paying rent for <strong id="property-name">...</strong>.</p>
                 <div class="my-6">
                     <p class="text-lg text-gray-600">Total Amount</p>
@@ -350,7 +337,6 @@
                 totalAmountDue += lateFee;
             }
 
-            document.getElementById('business-name').textContent = settingsData.businessName;
             document.getElementById('property-name').textContent = propertyData.name;
             document.getElementById('total-amount').textContent = `₹${totalAmountDue.toLocaleString('en-IN')}`;
             const transactionNote = `Rent for ${propertyData.name}`;
