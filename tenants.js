@@ -1,8 +1,7 @@
 // tenants.js
 
 import { db } from './firebase-config.js';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, Timestamp, getDocs, query, where, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+import { collection, onSnapshot, doc, setDoc, deleteDoc, Timestamp, getDocs, query, where, orderBy, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 lucide.createIcons();
 
@@ -30,10 +29,9 @@ const elements = {
     paginationControls: document.getElementById('pagination-controls'),
     imagePreview: document.getElementById('image-preview'),
     createLoginCheckbox: document.getElementById('create-login-checkbox'),
-    loginFieldsContainer: document.getElementById('login-fields-container'),
+    uidFieldContainer: document.getElementById('uid-field-container'),
     createLoginContainer: document.getElementById('create-login-container'),
     emailInput: document.getElementById('email'),
-    passwordInput: document.getElementById('password'),
     notificationBtn: document.getElementById('notification-btn'),
     activityModal: document.getElementById('activity-modal'),
     closeActivityModalBtn: document.getElementById('close-activity-modal'),
@@ -231,10 +229,8 @@ const openTenantModal = (tenantId = null) => {
         const tenant = allTenants.find(t => t.id === tenantId);
         elements.modalTitle.textContent = 'Edit Tenant Details';
         elements.createLoginContainer.style.display = 'none';
-        elements.loginFieldsContainer.style.display = 'grid';
+        elements.uidFieldContainer.style.display = 'none';
         elements.emailInput.readOnly = true;
-        elements.passwordInput.disabled = true;
-        elements.passwordInput.required = false;
 
         document.getElementById('tenant-image-url').value = tenant.imageUrl || '';
         if (tenant.imageUrl) elements.imagePreview.src = tenant.imageUrl;
@@ -258,11 +254,9 @@ const openTenantModal = (tenantId = null) => {
         editingTenantId = null;
         elements.modalTitle.textContent = 'Add New Tenant';
         elements.createLoginContainer.style.display = 'block';
-        elements.createLoginCheckbox.checked = true;
-        elements.loginFieldsContainer.style.display = 'grid';
+        elements.createLoginCheckbox.checked = false;
+        elements.uidFieldContainer.style.display = 'none';
         elements.emailInput.readOnly = false;
-        elements.passwordInput.disabled = false;
-        elements.passwordInput.required = true;
         elements.saveTenantBtn.textContent = 'Save Tenant';
     }
     elements.tenantModal.classList.remove('hidden');
@@ -468,18 +462,15 @@ const saveTenant = async (e) => {
             saveButton.textContent = 'Update Tenant';
         }
     } else {
-        // Logic for CREATING a new tenant using the Cloud Function
-        const createLogin = elements.createLoginCheckbox.checked;
-        if (!createLogin || !formData.email || !formData.password) {
-            window.showToast("Email and password are required to create a new tenant.", 'error');
-            saveButton.disabled = false;
-            saveButton.textContent = 'Save Tenant';
-            return;
-        }
-
+        // Logic for CREATING a new tenant
         try {
-            const functions = getFunctions();
-            const createTenant = httpsCallable(functions, 'createTenantWithLogin');
+            const createLogin = elements.createLoginCheckbox.checked;
+            const tenantUid = formData.tenantUid?.trim();
+
+            if (createLogin) {
+                if (!tenantUid) throw new Error("Firebase UID is required when 'Create Login' is checked.");
+                if (!formData.email) throw new Error("Email is required when 'Create Login' is checked.");
+            }
 
             const familyMembers = [];
             document.querySelectorAll('#family-members-list > div').forEach(row => {
@@ -495,7 +486,7 @@ const saveTenant = async (e) => {
                 newDueDate.setMonth(newDueDate.getMonth() + 1);
             }
 
-            const tenantDataForFunction = {
+            const tenantData = {
                 name: formData.name, phone: formData.phone, aadharNumber: formData.aadharNumber,
                 address: formData.address, familyMembers: familyMembers, propertyId: formData.propertyId,
                 rent: parseInt(formData.rent) || 0, deposit: parseInt(formData.deposit) || 0,
@@ -505,21 +496,24 @@ const saveTenant = async (e) => {
                 agreementDate: formData.agreementDate ? Timestamp.fromDate(new Date(formData.agreementDate)) : null,
                 agreementEndDate: formData.agreementEndDate ? Timestamp.fromDate(new Date(formData.agreementEndDate)) : null,
                 dueDate: Timestamp.fromDate(newDueDate),
-                email: formData.email,
-                imageUrl: formData.imageUrl || ''
+                email: formData.email || null,
+                imageUrl: formData.imageUrl || '',
+                status: 'Due',
+                createdAt: Timestamp.now()
             };
 
-            await createTenant({
-                email: formData.email,
-                password: formData.password,
-                tenantData: tenantDataForFunction
-            });
-
-            window.showToast('Tenant and login created successfully!');
+            if (tenantUid) {
+                await setDoc(doc(db, "tenants", tenantUid), tenantData);
+                window.showToast('Tenant with login created successfully!');
+            } else {
+                await addDoc(collection(db, "tenants"), tenantData);
+                window.showToast('Tenant added successfully (no login).');
+            }
+            
             closeTenantModal();
 
         } catch (error) {
-            console.error("Cloud function error:", error);
+            console.error("Error creating tenant:", error);
             window.showToast(error.message || "Failed to create tenant.", 'error');
         } finally {
             saveButton.disabled = false;
@@ -625,9 +619,8 @@ imageUrlInput.addEventListener('input', () => {
 
 elements.createLoginCheckbox.addEventListener('change', () => {
     const isChecked = elements.createLoginCheckbox.checked;
-    elements.loginFieldsContainer.style.display = isChecked ? 'grid' : 'none';
+    elements.uidFieldContainer.style.display = isChecked ? 'block' : 'none';
     elements.emailInput.required = isChecked;
-    elements.passwordInput.required = isChecked;
 });
 
 elements.saveTenantBtn.addEventListener('click', () => elements.tenantForm.requestSubmit());
