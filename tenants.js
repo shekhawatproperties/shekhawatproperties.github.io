@@ -1,4 +1,4 @@
-// tenants.js
+// tenants.js (CORRECTED AND COMPLETE CODE)
 
 import { db } from './firebase-config.js';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, Timestamp, getDocs, query, where, orderBy, getDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -102,52 +102,6 @@ const checkAndUpdateTenantStatus = (tenant) => {
         wasUpdated = true;
     }
     
-    return { updatedTenant: tenantData, wasUpdated };
-};
-
-const checkAndUpdateRent = (tenant) => {
-    let tenantData = JSON.parse(JSON.stringify(tenant));
-    let wasUpdated = false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (!tenantData.rentIncrementDate || !tenantData.rentIncrementDate.seconds || !tenantData.increment) {
-        return { updatedTenant: tenant, wasUpdated: false };
-    }
-
-    if (!tenantData.rentHistory || !Array.isArray(tenantData.rentHistory)) {
-        tenantData.rentHistory = [];
-    }
-    
-    const incrementAnniversary = new Date(tenantData.rentIncrementDate.seconds * 1000);
-    
-    let lastIncrementDate = (tenantData.rentHistory.length > 0)
-        ? new Date(tenantData.rentHistory.slice().sort((a,b) => b.dateApplied.seconds - a.dateApplied.seconds)[0].dateApplied.seconds * 1000)
-        : incrementAnniversary;
-
-    let nextIncrementYear = lastIncrementDate.getFullYear();
-    
-    if (lastIncrementDate.getMonth() > incrementAnniversary.getMonth() || (lastIncrementDate.getMonth() === incrementAnniversary.getMonth() && lastIncrementDate.getDate() >= incrementAnniversary.getDate())) {
-         nextIncrementYear += 1;
-    }
-
-    let nextIncrementDate = new Date(nextIncrementYear, incrementAnniversary.getMonth(), incrementAnniversary.getDate());
-
-    while (today >= nextIncrementDate) {
-        const newRent = Math.round(tenantData.rent + (tenantData.rent * (tenantData.increment / 100)));
-        tenantData.rent = newRent;
-        
-        tenantData.rentHistory.push({
-            year: tenantData.rentHistory.length + 1,
-            rent: newRent,
-            incrementPercent: tenantData.increment,
-            dateApplied: Timestamp.fromDate(nextIncrementDate)
-        });
-        wasUpdated = true;
-        
-        nextIncrementYear++;
-        nextIncrementDate.setFullYear(nextIncrementYear);
-    }
     return { updatedTenant: tenantData, wasUpdated };
 };
 
@@ -309,10 +263,10 @@ const populateDetailsTabs = async (tenantId) => {
             ? `<ul class="list-disc list-inside space-y-1">${tenant.familyMembers.map(m => `<li><span class="font-semibold">${m.name}</span>${m.aadhar ? ` <span class="text-xs text-gray-500">(Aadhar: ${m.aadhar})</span>` : ''}</li>`).join('')}</ul>`
             : '<p class="font-semibold">N/A</p>';
 
-        const historyTableHtml = (tenant.rentHistory && tenant.rentHistory.length > 1) ? `
+        const historyTableHtml = (tenant.rentHistory && tenant.rentHistory.length > 0) ? `
             <div class="overflow-x-auto mt-4"><table class="w-full text-sm text-left">
                 <thead class="bg-gray-50"><tr><th class="p-2 font-semibold">Year</th><th class="p-2 font-semibold text-right">Rent (₹)</th><th class="p-2 font-semibold text-right">Increment</th><th class="p-2 font-semibold">Date Applied</th></tr></thead>
-                <tbody>${tenant.rentHistory.slice().reverse().map(e => `<tr class="border-b"><td class="p-2">${e.year}</td><td class="p-2 font-semibold text-right">₹${e.rent.toLocaleString('en-IN')}</td><td class="p-2 text-right">${e.incrementPercent}%</td><td class="p-2">${new Date(e.dateApplied.seconds * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</td></tr>`).join('')}</tbody>
+                <tbody>${[...tenant.rentHistory].reverse().map(e => `<tr class="border-b"><td class="p-2">${e.year}</td><td class="p-2 font-semibold text-right">₹${e.rent.toLocaleString('en-IN')}</td><td class="p-2 text-right">${e.incrementPercent}%</td><td class="p-2">${new Date(e.dateApplied.seconds * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</td></tr>`).join('')}</tbody>
             </table></div>` : '<p class="text-sm text-gray-500 mt-2">No rent increment history found.</p>';
         
         const notesHtml = tenant.notes ? `<div class="prose prose-sm max-w-none whitespace-pre-wrap p-4 bg-gray-50 rounded-lg">${tenant.notes}</div>` : '<p class="text-sm text-gray-500">No admin notes for this tenant.</p>';
@@ -361,10 +315,14 @@ const populateDetailsTabs = async (tenantId) => {
                 <div class="space-y-3 text-sm">
                     <div class="flex justify-between"><span class="text-gray-500">Agreement Start</span><span class="font-semibold">${startDate}</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Agreement End</span><span class="font-semibold">${endDate}</span></div><hr>
-                    <div class="flex justify-between"><span class="text-gray-500">Starting Rent</span><span class="font-semibold">₹${startingRent.toLocaleString('en-IN')}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Starting Rent</span><span class="font-semibold">₹${(startingRent || tenant.rent).toLocaleString('en-IN')}</span></div>
                     <div class="flex justify-between text-green-600"><span class="text-gray-500">Current Rent</span><span class="font-bold text-base">₹${tenant.rent.toLocaleString('en-IN')}</span></div>
                     ${depositStatusInfo}
                     <div class="flex justify-between"><span class="text-gray-500">Yearly Increment</span><span class="font-semibold">${tenant.increment}%</span></div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-gray-500">Next Increment Due</span>
+                        <button data-id="${tenant.id}" id="apply-increment-btn" class="text-white font-semibold py-1 px-3 text-xs rounded-md hover:brightness-110" style="background-color: var(--theme-color);">Apply ${tenant.increment}% Increment</button>
+                    </div>
                 </div>
             </div>
             <div>
@@ -434,7 +392,6 @@ const manuallyApplyIncrement = async (tenantId, newRentValue) => {
     const tenant = allTenants.find(t => t.id === tenantId);
     if (!tenant) return window.showToast('Tenant not found.', 'error');
 
-    // The increment percentage is now just for record-keeping
     const incrementPercent = tenant.increment || 10;
     const newRent = parseInt(newRentValue);
 
@@ -458,8 +415,8 @@ const manuallyApplyIncrement = async (tenantId, newRentValue) => {
         }, { merge: true });
 
         window.showToast(`Rent updated to ₹${newRent.toLocaleString('en-IN')}!`, 'success');
-        document.getElementById('increment-modal').classList.add('hidden'); // Hide the modal
-        populateDetailsTabs(tenantId); // Refresh the details view
+        document.getElementById('increment-modal').classList.add('hidden');
+        populateDetailsTabs(tenantId);
     } catch (error) {
         console.error("Error applying increment:", error);
         window.showToast("Failed to apply increment.", 'error');
@@ -523,11 +480,12 @@ const saveTenant = async (e) => {
                 const aadhar = row.querySelector('input[name="memberAadhar"]').value.trim();
                 if (name) { familyMembers.push({ name, aadhar }); }
             });
-
-            const agreementDate = formData.agreementDate ? new Date(formData.agreementDate) : new Date();
+            
+            // --- CORRECTED DUE DATE LOGIC ---
             const rentDueDay = parseInt(formData.rentDueDay) || 5;
-            let newDueDate = new Date(agreementDate.getFullYear(), agreementDate.getMonth(), rentDueDay);
-            if (new Date().getDate() > rentDueDay) {
+            const today = new Date();
+            let newDueDate = new Date(today.getFullYear(), today.getMonth(), rentDueDay);
+            if (today.getDate() > rentDueDay) {
                 newDueDate.setMonth(newDueDate.getMonth() + 1);
             }
 
@@ -604,10 +562,8 @@ const init = async () => {
                 const statusCheck = checkAndUpdateTenantStatus(tenant);
                 if (statusCheck.wasUpdated) tenant = statusCheck.updatedTenant;
 
-                const rentCheck = checkAndUpdateRent(tenant);
-                if (rentCheck.wasUpdated) tenant = rentCheck.updatedTenant;
-                
-                if (statusCheck.wasUpdated || rentCheck.wasUpdated) {
+                // --- AUTOMATIC RENT CHECK IS NOW DISABLED ---
+                if (statusCheck.wasUpdated) {
                     updatePromises.push(setDoc(doc(db, "tenants", tenant.id), tenant));
                 }
             }
@@ -624,7 +580,6 @@ const init = async () => {
     
     onSnapshot(query(collection(db, "payments"), orderBy("date", "desc")), (snap) => {
         allPayments = snap.docs.map(d => ({id: d.id, ...d.data()}));
-        // This function is also a candidate for shared-admin.js
         updateNotifications(allPayments, allTenants);
     });
 };
@@ -700,22 +655,17 @@ elements.detailsModalBody.addEventListener('click', (e) => {
         });
     } else if (button.id === 'apply-increment-btn' && tenantId) {
         const incrementModal = document.getElementById('increment-modal');
-        const tenant = allTenants.find(t => t.id === tenantId);
-
+        
         const incrementPercent = tenant.increment || 10;
         const calculatedRent = Math.round(tenant.rent + (tenant.rent * (incrementPercent / 100)));
 
-        // Populate the modal with tenant's data
         document.getElementById('increment-modal-subtitle').textContent = `For tenant: ${tenant.name}`;
         document.getElementById('current-rent-display').textContent = `₹${tenant.rent.toLocaleString('en-IN')}`;
         document.getElementById('increment-percentage-display').textContent = `${incrementPercent}%`;
         document.getElementById('calculated-rent-display').textContent = `Calculated: ₹${calculatedRent.toLocaleString('en-IN')}`;
-        document.getElementById('manual-rent-input').value = calculatedRent; // Pre-fill with calculated value
-
-        // Store tenantId on the confirm button to use later
+        document.getElementById('manual-rent-input').value = calculatedRent;
         document.getElementById('confirm-increment-btn').dataset.tenantId = tenantId;
 
-        // Show the modal
         incrementModal.classList.remove('hidden');
     }
 });
@@ -773,14 +723,12 @@ init();
 
 // --- Event Listeners for the New Increment Modal ---
 
-// Handle the "Confirm & Save" button click
 document.getElementById('confirm-increment-btn').addEventListener('click', (e) => {
     const tenantId = e.target.dataset.tenantId;
     const newRentValue = document.getElementById('manual-rent-input').value;
     manuallyApplyIncrement(tenantId, newRentValue);
 });
 
-// Handle the "Cancel" button click
 document.getElementById('cancel-increment-btn').addEventListener('click', () => {
     document.getElementById('increment-modal').classList.add('hidden');
 });
