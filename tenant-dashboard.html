@@ -292,7 +292,8 @@
                   const finalNextIncrementDate = new Date(anniversaryDate);
                   finalNextIncrementDate.setFullYear(nextIncrementYear);
                   
-                  const rentIncrementPercentage = settingsData.rentIncrementPercentage;
+                  // **FIX:** Read increment percentage from tenantData, not settingsData
+                  const rentIncrementPercentage = tenantData.rentIncrementPercentage;
                   
                   if (typeof rentIncrementPercentage === 'number') {
                     nextIncrementDateEl.textContent = `Next Increment: ${finalNextIncrementDate.toLocaleDateString('en-IN', longDateOptions)}`;
