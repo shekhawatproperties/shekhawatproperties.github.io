@@ -365,6 +365,10 @@ const populateDetailsTabs = async (tenantId) => {
                     <div class="flex justify-between text-green-600"><span class="text-gray-500">Current Rent</span><span class="font-bold text-base">₹${tenant.rent.toLocaleString('en-IN')}</span></div>
                     ${depositStatusInfo}
                     <div class="flex justify-between"><span class="text-gray-500">Yearly Increment</span><span class="font-semibold">${tenant.increment}%</span></div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-gray-500">Next Increment Due</span>
+                        <button data-id="${tenant.id}" id="apply-increment-btn" class="text-white font-semibold py-1 px-3 text-xs rounded-md hover:brightness-110" style="background-color: var(--theme-color);">Apply ${tenant.increment}% Increment</button>
+                    </div>
                 </div>
             </div>
             <div>
@@ -399,6 +403,38 @@ const populateDetailsTabs = async (tenantId) => {
 };
 
 const closeDetailsModal = () => elements.detailsModal.classList.add('hidden');
+
+const manuallyApplyIncrement = async (tenantId) => {
+    const tenant = allTenants.find(t => t.id === tenantId);
+    if (!tenant) return window.showToast('Tenant not found.', 'error');
+
+    const incrementPercent = tenant.increment || 10;
+    const newRent = Math.round(tenant.rent + (tenant.rent * (incrementPercent / 100)));
+
+    const newHistoryEntry = {
+        year: (tenant.rentHistory?.length || 0) + 1,
+        rent: newRent,
+        incrementPercent: incrementPercent,
+        dateApplied: Timestamp.now()
+    };
+
+    const rentHistory = tenant.rentHistory ? [...tenant.rentHistory, newHistoryEntry] : [newHistoryEntry];
+
+    try {
+        await setDoc(doc(db, "tenants", tenantId), {
+            rent: newRent,
+            rentHistory: rentHistory
+        }, { merge: true });
+
+        window.showToast(`Rent updated to ₹${newRent.toLocaleString('en-IN')}!`, 'success');
+
+        // Refresh the details view to show the new rent
+        populateDetailsTabs(tenantId);
+    } catch (error) {
+        console.error("Error applying increment:", error);
+        window.showToast("Failed to apply increment.", 'error');
+    }
+};
 
 // --- Actions ---
 
@@ -488,10 +524,13 @@ const saveTenant = async (e) => {
                 if (name) { familyMembers.push({ name, aadhar }); }
             });
 
-            const agreementDate = formData.agreementDate ? new Date(formData.agreementDate) : new Date();
             const rentDueDay = parseInt(formData.rentDueDay) || 5;
-            let newDueDate = new Date(agreementDate.getFullYear(), agreementDate.getMonth(), rentDueDay);
-            if (new Date().getDate() > rentDueDay) {
+            const today = new Date();
+            // Set the initial due date based on the CURRENT month and year
+            let newDueDate = new Date(today.getFullYear(), today.getMonth(), rentDueDay);
+
+            // If the due day has already passed in the current month, set the due date for NEXT month
+            if (today.getDate() > rentDueDay) {
                 newDueDate.setMonth(newDueDate.getMonth() + 1);
             }
 
@@ -568,10 +607,10 @@ const init = async () => {
                 const statusCheck = checkAndUpdateTenantStatus(tenant);
                 if (statusCheck.wasUpdated) tenant = statusCheck.updatedTenant;
 
-                const rentCheck = checkAndUpdateRent(tenant);
-                if (rentCheck.wasUpdated) tenant = rentCheck.updatedTenant;
-                
-                if (statusCheck.wasUpdated || rentCheck.wasUpdated) {
+                // const rentCheck = checkAndUpdateRent(tenant);
+                // if (rentCheck.wasUpdated) tenant = rentCheck.updatedTenant;
+
+                if (statusCheck.wasUpdated) { // Now it only checks for status updates
                     updatePromises.push(setDoc(doc(db, "tenants", tenant.id), tenant));
                 }
             }
@@ -662,6 +701,12 @@ elements.detailsModalBody.addEventListener('click', (e) => {
             await deleteDoc(doc(db, "tenants", tenantId));
             closeDetailsModal();
         });
+    } else if (button.id === 'apply-increment-btn' && tenantId) {
+        window.showConfirmModal(
+            'Apply Rent Increment?', 
+            `This will increase the rent for <strong>${tenant.name}</strong> by ${tenant.increment}%. Are you sure?`, 
+            () => manuallyApplyIncrement(tenantId)
+        );
     }
 });
 
