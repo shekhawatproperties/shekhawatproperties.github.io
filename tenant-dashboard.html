@@ -292,10 +292,15 @@
                   const finalNextIncrementDate = new Date(anniversaryDate);
                   finalNextIncrementDate.setFullYear(nextIncrementYear);
                   
-                  // **FIX:** Read increment percentage from tenantData, not settingsData
-                  const rentIncrementPercentage = tenantData.rentIncrementPercentage;
+                  // **FIX:** Read from tenantData and handle if value is a string
+                  let rentIncrementPercentage = tenantData.rentIncrementPercentage;
                   
-                  if (typeof rentIncrementPercentage === 'number') {
+                  // Try to convert to number if it's a string
+                  if (typeof rentIncrementPercentage === 'string') {
+                    rentIncrementPercentage = parseFloat(rentIncrementPercentage);
+                  }
+                  
+                  if (typeof rentIncrementPercentage === 'number' && !isNaN(rentIncrementPercentage)) {
                     nextIncrementDateEl.textContent = `Next Increment: ${finalNextIncrementDate.toLocaleDateString('en-IN', longDateOptions)}`;
                     const revisedRent = tenantData.rent * (1 + rentIncrementPercentage / 100);
                     revisedRentInfoEl.textContent = `Rent will be revised to ₹${Math.round(revisedRent).toLocaleString('en-IN')}/month.`;
