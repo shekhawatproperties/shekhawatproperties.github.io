@@ -258,6 +258,37 @@
         </div>
     </div>
 
+    <div id="increment-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6 border-b">
+                <h2 class="text-2xl font-bold">Apply Rent Increment</h2>
+                <p id="increment-modal-subtitle" class="text-sm text-gray-500 mt-1">For tenant: John Doe</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">Current Monthly Rent</label>
+                    <p id="current-rent-display" class="text-lg font-bold text-gray-800">₹5,000</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">
+                        New Rent after <span id="increment-percentage-display" class="font-bold">5%</span> increase
+                    </label>
+                    <p id="calculated-rent-display" class="text-sm text-gray-500">Calculated: ₹5,250</p>
+                </div>
+                <div>
+                    <label for="manual-rent-input" class="block text-sm font-medium text-gray-600">
+                        Set Final Rent Amount (Editable)
+                    </label>
+                    <input type="number" id="manual-rent-input" class="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-bold">
+                </div>
+            </div>
+            <div class="p-6 bg-gray-50 flex justify-end space-x-4 rounded-b-lg">
+                <button id="cancel-increment-btn" class="px-6 py-2 rounded-lg text-gray-800 bg-gray-200 hover:bg-gray-300 font-semibold">Cancel</button>
+                <button id="confirm-increment-btn" class="px-6 py-2 rounded-lg text-white font-semibold hover:brightness-110 transition" style="background-color: var(--theme-color);">Confirm & Save</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-2"></div>
 
 <script type="module" src="shared-admin.js"></script>
