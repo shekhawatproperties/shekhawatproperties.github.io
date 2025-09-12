@@ -291,13 +291,17 @@
                   }
                   const finalNextIncrementDate = new Date(anniversaryDate);
                   finalNextIncrementDate.setFullYear(nextIncrementYear);
-                  nextIncrementDateEl.textContent = `Next Increment: ${finalNextIncrementDate.toLocaleDateString('en-IN', longDateOptions)}`;
                   
-                  const rentIncrementPercentage = settingsData.rentIncrementPercentage || 10;
-                  const revisedRent = tenantData.rent * (1 + rentIncrementPercentage / 100);
-                  revisedRentInfoEl.textContent = `Rent will be revised to ₹${Math.round(revisedRent).toLocaleString('en-IN')}/month.`;
+                  const rentIncrementPercentage = settingsData.rentIncrementPercentage;
                   
-                  if(nextIncrementCard) nextIncrementCard.classList.remove('hidden');
+                  if (typeof rentIncrementPercentage === 'number') {
+                    nextIncrementDateEl.textContent = `Next Increment: ${finalNextIncrementDate.toLocaleDateString('en-IN', longDateOptions)}`;
+                    const revisedRent = tenantData.rent * (1 + rentIncrementPercentage / 100);
+                    revisedRentInfoEl.textContent = `Rent will be revised to ₹${Math.round(revisedRent).toLocaleString('en-IN')}/month.`;
+                    if(nextIncrementCard) nextIncrementCard.classList.remove('hidden');
+                  } else {
+                    if(nextIncrementCard) nextIncrementCard.classList.add('hidden');
+                  }
 
               } else {
                   if(nextIncrementCard) nextIncrementCard.classList.add('hidden');
@@ -478,3 +482,4 @@
 </script>
 </body>
 </html>
+
