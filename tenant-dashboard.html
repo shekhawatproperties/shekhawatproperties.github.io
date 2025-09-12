@@ -53,11 +53,11 @@
         </nav>
         <div class="border-t pt-4">
              <div class="flex items-center">
-                 <img id="sidebar-profile-img" src="https://placehold.co/40x40/e0e7ff/4f46e5?text=U" alt="Tenant" class="w-10 h-10 rounded-full">
-                 <div class="ml-3">
-                     <p id="sidebar-user-name" class="text-sm font-semibold text-gray-800">Loading...</p>
-                     <p id="sidebar-user-email" class="text-xs text-gray-500">Loading...</p>
-                 </div>
+                <img id="sidebar-profile-img" src="https://placehold.co/40x40/e0e7ff/4f46e5?text=U" alt="Tenant" class="w-10 h-10 rounded-full">
+                <div class="ml-3">
+                    <p id="sidebar-user-name" class="text-sm font-semibold text-gray-800">Loading...</p>
+                    <p id="sidebar-user-email" class="text-xs text-gray-500">Loading...</p>
+                </div>
              </div>
         </div>
     </div>
@@ -129,27 +129,17 @@
               </div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm">
-                <h2 class="text-xl font-bold mb-4">Financial Summary</h2>
-                <div class="space-y-4">
-                    <!-- Security Deposit Card -->
-                    <div class="flex items-center space-x-4">
-                        <div class="bg-indigo-100 p-3 rounded-lg flex-shrink-0">
-                            <i data-lucide="landmark" class="w-6 h-6 text-indigo-600"></i>
-                        </div>
-                        <div>
-                            <p id="security-deposit-amount" class="font-bold text-lg text-gray-800"></p>
-                            <p id="security-deposit-label" class="text-sm text-gray-500">Security Deposit</p>
-                        </div>
-                    </div>
-                    <!-- Next Increment Card -->
-                    <div id="next-increment-card" class="hidden flex items-start space-x-4 p-4 rounded-xl bg-green-50">
-                        <i data-lucide="trending-up" class="w-6 h-6 text-green-600 mt-1 flex-shrink-0"></i>
-                        <div>
-                            <p id="next-increment-date" class="font-semibold text-green-800"></p>
-                            <p id="revised-rent-info" class="text-sm text-gray-600"></p>
-                        </div>
-                    </div>
+              <h2 class="text-xl font-bold mb-4">Financial Summary</h2>
+              <div class="space-y-3">
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <i data-lucide="landmark" class="w-6 h-6 flex-shrink-0" style="color: var(--theme-color);"></i>
+                  <div><p class="font-semibold text-lg" id="security-deposit-amount"></p><p class="text-gray-500 text-sm" id="security-deposit-label">Security Deposit</p></div>
                 </div>
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <i data-lucide="trending-up" class="w-6 h-6" style="color: var(--theme-color);"></i>
+                  <div><p class="font-semibold" id="next-increment-date"></p><p class="text-gray-500 text-sm">Next Rent Increment</p></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -245,8 +235,8 @@
           ]);
 
           if (!settingsSnap.exists()) {
-              loader.innerHTML = `<p class="text-red-500">Error: Could not load application settings. Please contact support.</p>`;
-              return;
+             loader.innerHTML = `<p class="text-red-500">Error: Could not load application settings. Please contact support.</p>`;
+             return;
           }
           const settingsData = settingsSnap.data();
           const noticeData = noticeSnap.exists() ? noticeSnap.data() : { message: "No new notices." };
@@ -271,17 +261,13 @@
               document.getElementById('property-name').textContent = propertyData.name;
               document.getElementById('agreement-start-date').textContent = tenantData.agreementDate ? new Date(tenantData.agreementDate.seconds * 1000).toLocaleDateString('en-IN', longDateOptions) : 'N/A';
               
-              // Populate Financial Summary
               const depositAmountEl = document.getElementById('security-deposit-amount');
               const depositLabelEl = document.getElementById('security-deposit-label');
               const depositStatus = tenantData.depositStatus || 'Pending';
               depositAmountEl.textContent = `₹${(tenantData.deposit || 0).toLocaleString('en-IN')}`;
-              depositLabelEl.textContent = `Security Deposit ${depositStatus}`;
-
-              const nextIncrementCard = document.getElementById('next-increment-card');
+              depositLabelEl.textContent = `Security Deposit (${depositStatus})`;
+              
               const nextIncrementDateEl = document.getElementById('next-increment-date');
-              const revisedRentInfoEl = document.getElementById('revised-rent-info');
-
               if (tenantData.rentIncrementDate && tenantData.rentIncrementDate.seconds) {
                   const anniversaryDate = new Date(tenantData.rentIncrementDate.seconds * 1000);
                   const today = new Date();
@@ -291,26 +277,9 @@
                   }
                   const finalNextIncrementDate = new Date(anniversaryDate);
                   finalNextIncrementDate.setFullYear(nextIncrementYear);
-                  
-                  // **FIX:** Read from tenantData and handle if value is a string
-                  let rentIncrementPercentage = tenantData.rentIncrementPercentage;
-                  
-                  // Try to convert to number if it's a string
-                  if (typeof rentIncrementPercentage === 'string') {
-                    rentIncrementPercentage = parseFloat(rentIncrementPercentage);
-                  }
-                  
-                  if (typeof rentIncrementPercentage === 'number' && !isNaN(rentIncrementPercentage)) {
-                    nextIncrementDateEl.textContent = `Next Increment: ${finalNextIncrementDate.toLocaleDateString('en-IN', longDateOptions)}`;
-                    const revisedRent = tenantData.rent * (1 + rentIncrementPercentage / 100);
-                    revisedRentInfoEl.textContent = `Rent will be revised to ₹${Math.round(revisedRent).toLocaleString('en-IN')}/month.`;
-                    if(nextIncrementCard) nextIncrementCard.classList.remove('hidden');
-                  } else {
-                    if(nextIncrementCard) nextIncrementCard.classList.add('hidden');
-                  }
-
+                  nextIncrementDateEl.textContent = finalNextIncrementDate.toLocaleDateString('en-IN', longDateOptions);
               } else {
-                  if(nextIncrementCard) nextIncrementCard.classList.add('hidden');
+                  nextIncrementDateEl.textContent = 'N/A';
               }
 
               const paymentsQuery = query(collection(db, "payments"), where("tenantId", "==", tenantId), orderBy("date", "desc"), limit(5));
@@ -488,4 +457,3 @@
 </script>
 </body>
 </html>
-
