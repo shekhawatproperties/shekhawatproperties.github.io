@@ -212,6 +212,11 @@
     sessionStorage.removeItem('showTryAgainToast');
   }
 
+  if (sessionStorage.getItem('showPaymentSubmittedToast') === 'true') {
+    showToast('Payment submitted for verification!', 'success');
+    sessionStorage.removeItem('showPaymentSubmittedToast');
+  }
+
   let confirmCallback = null;
   const showConfirmModal = (title, message, onConfirm) => {
       document.getElementById('confirm-modal-title').textContent = title;
@@ -346,19 +351,16 @@
     card.innerHTML = `<i data-lucide="calendar-check" class="w-12 h-12 text-green-500 mx-auto"></i><h2 class="text-xl font-bold text-gray-700 mt-4">Rent is Paid</h2><p class="text-gray-500 mt-1">Your next payment window will open on <br><strong class="text-gray-600">${formattedDate}</strong>.</p>`;
   }
 
-  // UPDATED: Major overhaul of renderDueCard to support installments
   async function renderDueCard(tenant, tenantId, settings) {
     const card = document.getElementById('payment-due-card');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dueDate = tenant.dueDate ? new Date(tenant.dueDate.seconds * 1000) : new Date();
 
-    // Calculate the start of the current billing cycle (the day after the previous due date)
     const cycleStartDate = new Date(dueDate);
     cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);
     cycleStartDate.setDate(cycleStartDate.getDate() + 1);
     
-    // --- Calculate Total Due Amount ---
     let totalDue = tenant.rent;
     let billBreakdownHTML = `<div class="flex justify-between"><span class="font-medium text-gray-500">Base Rent:</span><span>₹${tenant.rent.toLocaleString('en-IN')}</span></div>`;
 
@@ -384,7 +386,6 @@
         if (lateFee > 0) billBreakdownHTML += `<div class="flex justify-between text-red-600"><span class="font-medium">Late Fee:</span><span>₹${lateFee.toLocaleString('en-IN')}</span></div>`;
     }
     
-    // --- Calculate Amount Paid in Current Cycle ---
     let amountPaidSoFar = 0;
     const paymentsInCycleQuery = query(
         collection(db, "payments"), 
@@ -403,69 +404,9 @@
     const cardClass = tenant.status === 'Overdue' ? 'border-red-500' : 'border-yellow-500';
     card.className = `bg-white p-6 sm:p-8 rounded-2xl shadow-sm border-l-4 ${cardClass}`;
 
-    // UPDATED: Major overhaul of renderDueCard to support installments
-async function renderDueCard(tenant, tenantId, settings) {
-    const card = document.getElementById('payment-due-card');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dueDate = tenant.dueDate ? new Date(tenant.dueDate.seconds * 1000) : new Date();
-
-    // Calculate the start of the current billing cycle (the day after the previous due date)
-    const cycleStartDate = new Date(dueDate);
-    cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);
-    cycleStartDate.setDate(cycleStartDate.getDate() + 1);
-    
-    // --- Calculate Total Due Amount ---
-    let totalDue = tenant.rent;
-    let billBreakdownHTML = `<div class="flex justify-between"><span class="font-medium text-gray-500">Base Rent:</span><span>₹${tenant.rent.toLocaleString('en-IN')}</span></div>`;
-
-    const unbilledQuery = query(collection(db, "tenants", tenantId, "monthly_charges"), where("isBilled", "==", false));
-    const unbilledSnaps = await getDocs(unbilledQuery);
-
-    if (!unbilledSnaps.empty) {
-        unbilledSnaps.forEach(doc => {
-            const charge = doc.data();
-            const [year, month] = doc.id.split('-');
-            const monthName = new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'short' });
-            totalDue += (charge.electricityBill || 0) + (charge.otherCharges || 0);
-            if (charge.electricityBill > 0) { billBreakdownHTML += `<div class="flex justify-between"><span class="font-medium text-gray-500">Electricity (${monthName} ${year}):</span><span>₹${charge.electricityBill.toLocaleString('en-IN')}</span></div>`; }
-            if (charge.otherCharges > 0) { billBreakdownHTML += `<div class="flex justify-between"><span class="font-medium text-gray-500">Other Charges (${monthName} ${year}):</span><span>₹${charge.otherCharges.toLocaleString('en-IN')}</span></div>`; }
-        });
-    }
-    
-    let lateFee = 0;
-    const daysOverdue = Math.max(0, Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24)));
-    if (daysOverdue > settings.gracePeriodDays) {
-        lateFee = (daysOverdue - settings.gracePeriodDays) * settings.lateFeePerDay;
-        totalDue += lateFee;
-        if (lateFee > 0) billBreakdownHTML += `<div class="flex justify-between text-red-600"><span class="font-medium">Late Fee:</span><span>₹${lateFee.toLocaleString('en-IN')}</span></div>`;
-    }
-    
-    // --- Calculate Amount Paid in Current Cycle ---
-    let amountPaidSoFar = 0;
-    const paymentsInCycleQuery = query(
-        collection(db, "payments"), 
-        where("tenantId", "==", tenantId), 
-        where("date", ">=", Timestamp.fromDate(cycleStartDate)),
-        where("date", "<=", tenant.dueDate)
-    );
-    const paymentsInCycleSnap = await getDocs(paymentsInCycleQuery);
-    paymentsInCycleSnap.forEach(doc => {
-        amountPaidSoFar += doc.data().amount;
-    });
-    
-    const remainingDue = totalDue - amountPaidSoFar;
-    const allowedInstallments = tenant.allowedInstallments || 1;
-    const dueDateFormatted = dueDate.toLocaleDateString('en-IN', longDateOptions);
-    const cardClass = tenant.status === 'Overdue' ? 'border-red-500' : 'border-yellow-500';
-    card.className = `bg-white p-6 sm:p-8 rounded-2xl shadow-sm border-l-4 ${cardClass}`;
-
-    // NEW: Smart link for the Pay Now button
     const paymentPageLink = `tenant-payment.html?tid=${tenantId}&totalDue=${totalDue}&amountPaid=${amountPaidSoFar}&installments=${allowedInstallments}`;
 
-    // --- Render Card Based on Installment Logic ---
     if (allowedInstallments > 1 && remainingDue > 0) {
-        // Installment View (NOW WITH FULL DETAILS)
         card.innerHTML = `<h2 class="text-lg font-semibold text-gray-500 mb-2">Remaining Amount Due</h2>
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <div>
@@ -484,7 +425,6 @@ async function renderDueCard(tenant, tenantId, settings) {
                 <div class="flex justify-between font-bold text-base"><span class="font-medium text-gray-500">Total Bill for this month:</span><span>₹${totalDue.toLocaleString('en-IN')}</span></div>
             </div>`;
     } else {
-        // Standard Full Payment View
         card.innerHTML = `<h2 class="text-lg font-semibold text-gray-500 mb-2">Total Amount Due</h2>
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <div>
@@ -501,7 +441,7 @@ async function renderDueCard(tenant, tenantId, settings) {
                 <p>A late fee of ₹${settings.lateFeePerDay}/day will be charged after a ${settings.gracePeriodDays} day grace period.</p>
             </div>`;
     }
-}
+  }
 
   function populateRecentPayments(payments) {
       const tableBody = document.getElementById('payment-history-tbody');
@@ -563,4 +503,5 @@ async function renderDueCard(tenant, tenantId, settings) {
 </script>
 </body>
 </html>
+
 
