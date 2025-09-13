@@ -202,7 +202,8 @@ const openTenantModal = (tenantId = null) => {
             tenant.familyMembers.forEach(member => addFamilyMemberRow(member.name, member.aadhar));
         }
 
-        ['name','email','phone','aadharNumber','address','propertyId','rent','deposit','rentDueDay','increment','notes', 'depositStatus'].forEach(key => {
+        // UPDATED: Added 'allowedInstallments' to the list of fields to populate
+        ['name','email','phone','aadharNumber','address','propertyId','rent','deposit','rentDueDay','increment','notes', 'depositStatus', 'allowedInstallments'].forEach(key => {
             if(elements.tenantForm.elements[key] && tenant[key]) {
                  elements.tenantForm.elements[key].value = tenant[key];
             }
@@ -220,6 +221,7 @@ const openTenantModal = (tenantId = null) => {
         elements.createLoginCheckbox.checked = false;
         elements.uidFieldContainer.style.display = 'none';
         elements.emailInput.readOnly = false;
+        elements.tenantForm.elements['allowedInstallments'].value = '1'; // NEW: Default new tenants to full payment
         elements.saveTenantBtn.textContent = 'Save Tenant';
     }
     elements.tenantModal.classList.remove('hidden');
@@ -281,6 +283,10 @@ const populateDetailsTabs = async (tenantId) => {
         
         const depositStatusInfo = `<div class="flex justify-between"><span class="text-gray-500">Security Deposit</span><span class="font-semibold">₹${(tenant.deposit || 0).toLocaleString('en-IN')} (${tenant.depositStatus || 'Pending'})</span></div>`;
         
+        // NEW: Display logic for payment method (installments)
+        const paymentMethodText = tenant.allowedInstallments > 1 ? `${tenant.allowedInstallments} Installments` : 'Full Payment';
+        const paymentMethodHtml = `<div class="flex justify-between"><span class="text-gray-500">Payment Method</span><span class="font-semibold">${paymentMethodText}</span></div>`;
+
         elements.detailsModalBody.innerHTML = `
             <div class="flex flex-col md:flex-row items-start md:space-x-8">
                 <div class="w-full md:w-1/4 text-center md:border-r md:pr-8 flex-shrink-0">
@@ -318,7 +324,7 @@ const populateDetailsTabs = async (tenantId) => {
                     <div class="flex justify-between"><span class="text-gray-500">Starting Rent</span><span class="font-semibold">₹${(startingRent || tenant.rent).toLocaleString('en-IN')}</span></div>
                     <div class="flex justify-between text-green-600"><span class="text-gray-500">Current Rent</span><span class="font-bold text-base">₹${tenant.rent.toLocaleString('en-IN')}</span></div>
                     ${depositStatusInfo}
-                    <div class="flex justify-between"><span class="text-gray-500">Yearly Increment</span><span class="font-semibold">${tenant.increment}%</span></div>
+                    ${paymentMethodHtml} <div class="flex justify-between"><span class="text-gray-500">Yearly Increment</span><span class="font-semibold">${tenant.increment}%</span></div>
                     <div class="flex justify-between items-center mt-2">
                         <span class="text-gray-500">Next Increment Due</span>
                         <button data-id="${tenant.id}" id="apply-increment-btn" class="text-white font-semibold py-1 px-3 text-xs rounded-md hover:brightness-110" style="background-color: var(--theme-color);">Apply ${tenant.increment}% Increment</button>
@@ -441,6 +447,7 @@ const saveTenant = async (e) => {
                 if (name) { familyMembers.push({ name, aadhar }); }
             });
 
+            // UPDATED: Added allowedInstallments to the data being saved
             const dataToSave = {
                 name: formData.name, email: formData.email, phone: formData.phone, aadharNumber: formData.aadharNumber,
                 address: formData.address, familyMembers: familyMembers, propertyId: formData.propertyId,
@@ -450,7 +457,8 @@ const saveTenant = async (e) => {
                 rentIncrementDate: formData.rentIncrementDate ? Timestamp.fromDate(new Date(formData.rentIncrementDate)) : null,
                 agreementDate: formData.agreementDate ? Timestamp.fromDate(new Date(formData.agreementDate)) : null,
                 agreementEndDate: formData.agreementEndDate ? Timestamp.fromDate(new Date(formData.agreementEndDate)) : null,
-                imageUrl: formData.imageUrl || ''
+                imageUrl: formData.imageUrl || '',
+                allowedInstallments: parseInt(formData.allowedInstallments) || 1,
             };
 
             await setDoc(doc(db, "tenants", editingTenantId), dataToSave, { merge: true });
@@ -481,7 +489,6 @@ const saveTenant = async (e) => {
                 if (name) { familyMembers.push({ name, aadhar }); }
             });
             
-            // --- CORRECTED DUE DATE LOGIC ---
             const rentDueDay = parseInt(formData.rentDueDay) || 5;
             const today = new Date();
             let newDueDate = new Date(today.getFullYear(), today.getMonth(), rentDueDay);
@@ -489,6 +496,7 @@ const saveTenant = async (e) => {
                 newDueDate.setMonth(newDueDate.getMonth() + 1);
             }
 
+            // UPDATED: Added allowedInstallments to the new tenant data
             const tenantData = {
                 name: formData.name, phone: formData.phone, aadharNumber: formData.aadharNumber,
                 address: formData.address, familyMembers: familyMembers, propertyId: formData.propertyId,
@@ -502,7 +510,8 @@ const saveTenant = async (e) => {
                 email: formData.email || null,
                 imageUrl: formData.imageUrl || '',
                 status: 'Due',
-                createdAt: Timestamp.now()
+                createdAt: Timestamp.now(),
+                allowedInstallments: parseInt(formData.allowedInstallments) || 1,
             };
 
             if (tenantUid) {
@@ -562,7 +571,6 @@ const init = async () => {
                 const statusCheck = checkAndUpdateTenantStatus(tenant);
                 if (statusCheck.wasUpdated) tenant = statusCheck.updatedTenant;
 
-                // --- AUTOMATIC RENT CHECK IS NOW DISABLED ---
                 if (statusCheck.wasUpdated) {
                     updatePromises.push(setDoc(doc(db, "tenants", tenant.id), tenant));
                 }
