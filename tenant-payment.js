@@ -135,7 +135,8 @@ onAuthStateChanged(auth, async (user) => {
         const installmentAmount = (installments > 1) ? Math.round(totalDue / installments) : remainingDue;
         
         // Populate summary details
-        document.getElementById('summary-total').textContent = `₹${totalDue.toLocaleString('en-IN')}`;
+        // Corrected line
+document.getElementById('summary-total').textContent = `₹${totalAmountDue.toLocaleString('en-IN')}`;
         document.getElementById('summary-paid').textContent = `₹${amountPaid.toLocaleString('en-IN')}`;
         document.getElementById('summary-remaining').textContent = `₹${remainingDue.toLocaleString('en-IN')}`;
 
