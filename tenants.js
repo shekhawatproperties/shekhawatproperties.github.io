@@ -181,12 +181,17 @@ const openTenantModal = (tenantId = null) => {
     elements.tenantForm.reset();
     document.getElementById('family-members-list').innerHTML = '';
     elements.imagePreview.src = "https://placehold.co/200x200/e0e7ff/4f46e5?text=Preview";
-    
+
     const occupiedPropertyIds = allTenants.filter(t => t.status !== 'Archived' && t.id !== tenantId).map(t => t.propertyId);
     const vacantProperties = allProperties.filter(p => !occupiedPropertyIds.includes(p.id));
     elements.propertyIdSelect.innerHTML = '<option value="">Select a property</option>' + vacantProperties.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    
+
     document.getElementById('tenant-image-url').value = '';
+
+    // NEW LOGIC TO SHOW/HIDE MANUAL DATE FIELD
+    const firstDueDateContainer = document.getElementById('first-due-date-container');
+    const firstDueDateInput = document.getElementById('firstDueDate');
+
     if (tenantId) {
         editingTenantId = tenantId;
         const tenant = allTenants.find(t => t.id === tenantId);
@@ -195,6 +200,10 @@ const openTenantModal = (tenantId = null) => {
         elements.uidFieldContainer.style.display = 'none';
         elements.emailInput.readOnly = true;
 
+        // Hide manual date field when editing
+        firstDueDateContainer.style.display = 'none';
+        firstDueDateInput.required = false;
+
         document.getElementById('tenant-image-url').value = tenant.imageUrl || '';
         if (tenant.imageUrl) elements.imagePreview.src = tenant.imageUrl;
 
@@ -202,9 +211,8 @@ const openTenantModal = (tenantId = null) => {
             tenant.familyMembers.forEach(member => addFamilyMemberRow(member.name, member.aadhar));
         }
 
-        // UPDATED: Added 'allowedInstallments' to the list of fields to populate
         ['name','email','phone','aadharNumber','address','propertyId','rent','deposit','rentDueDay','increment','notes', 'depositStatus', 'allowedInstallments'].forEach(key => {
-            if(elements.tenantForm.elements[key] && tenant[key]) {
+            if(elements.tenantForm.elements[key] && tenant[key] != null) {
                  elements.tenantForm.elements[key].value = tenant[key];
             }
         });
@@ -221,7 +229,12 @@ const openTenantModal = (tenantId = null) => {
         elements.createLoginCheckbox.checked = false;
         elements.uidFieldContainer.style.display = 'none';
         elements.emailInput.readOnly = false;
-        elements.tenantForm.elements['allowedInstallments'].value = '1'; // NEW: Default new tenants to full payment
+        elements.tenantForm.elements['allowedInstallments'].value = '1';
+
+        // Show manual date field for new tenants
+        firstDueDateContainer.style.display = 'block';
+        firstDueDateInput.required = true;
+
         elements.saveTenantBtn.textContent = 'Save Tenant';
     }
     elements.tenantModal.classList.remove('hidden');
@@ -471,9 +484,8 @@ const saveTenant = async (e) => {
             saveButton.disabled = false;
             saveButton.textContent = 'Update Tenant';
         }
-    // REPLACE THE ENTIRE 'ELSE' BLOCK for creating a new tenant with this FINAL code
     } else {
-        // Logic for CREATING a new tenant
+        // Logic for CREATING a new tenant (with manual date input)
         try {
             const createLogin = elements.createLoginCheckbox.checked;
             const tenantUid = formData.tenantUid?.trim();
@@ -489,30 +501,21 @@ const saveTenant = async (e) => {
                 const aadhar = row.querySelector('input[name="memberAadhar"]').value.trim();
                 if (name) { familyMembers.push({ name, aadhar }); }
             });
-            
-            // --- NAYA AUR SABSE AACHA DATE LOGIC (AAPKE IDEA PAR AADHARIT) ---
-            const rentDueDay = parseInt(formData.rentDueDay) || 5;
-            const creationTimestamp = Timestamp.now(); // Tenant ki joining ka timestamp
-            const creationDate = creationTimestamp.toDate(); // Usko JS Date mein badla
-            
-            // Timezone ki problem se bachne ke liye time set kiya
-            creationDate.setHours(12, 0, 0, 0); 
-            
-            // Pehli due date joining ke mahine mein set ki
-            let firstDueDate = new Date(creationDate.getFullYear(), creationDate.getMonth(), rentDueDay);
-            firstDueDate.setHours(12, 0, 0, 0);
 
-            // Agar tenant ne due date ke baad join kiya, to pehli due date agle mahine hogi
-            if (creationDate.getDate() > rentDueDay) {
-                firstDueDate.setMonth(firstDueDate.getMonth() + 1);
+            // --- NEW LOGIC: READ MANUAL DATE FROM FORM ---
+            if (!formData.firstDueDate) {
+                throw new Error("First Rent Due Date is required.");
             }
-            // --- END OF NEW DATE LOGIC ---
+            // We use setUTCHours to prevent timezone from changing the date
+            const manualDueDate = new Date(formData.firstDueDate + 'T12:00:00Z');
+            // --- END OF NEW LOGIC ---
 
             const tenantData = {
                 name: formData.name, phone: formData.phone, aadharNumber: formData.aadharNumber,
                 address: formData.address, familyMembers: familyMembers, propertyId: formData.propertyId,
                 rent: parseInt(formData.rent) || 0, deposit: parseInt(formData.deposit) || 0,
-                depositStatus: formData.depositStatus || 'Pending', rentDueDay: rentDueDay,
+                depositStatus: formData.depositStatus || 'Pending',
+                rentDueDay: parseInt(formData.rentDueDay) || 5,
                 increment: parseInt(formData.increment) || 10, notes: formData.notes || '',
                 rentIncrementDate: formData.rentIncrementDate ? Timestamp.fromDate(new Date(formData.rentIncrementDate)) : null,
                 agreementDate: formData.agreementDate ? Timestamp.fromDate(new Date(formData.agreementDate)) : null,
@@ -520,11 +523,8 @@ const saveTenant = async (e) => {
                 email: formData.email || null,
                 imageUrl: formData.imageUrl || '',
                 status: 'Due',
-                
-                // Yahan hum naya aur aacha data save kar rahe hain
-                createdAt: creationTimestamp,
-                dueDate: Timestamp.fromDate(firstDueDate),
-                
+                createdAt: Timestamp.now(),
+                dueDate: Timestamp.fromDate(manualDueDate), // Saving the manually set date
                 allowedInstallments: parseInt(formData.allowedInstallments) || 1,
             };
 
@@ -535,7 +535,7 @@ const saveTenant = async (e) => {
                 await addDoc(collection(db, "tenants"), tenantData);
                 window.showToast('Tenant added successfully (no login).');
             }
-            
+
             closeTenantModal();
 
         } catch (error) {
