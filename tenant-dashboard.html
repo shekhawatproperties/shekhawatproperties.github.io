@@ -405,7 +405,7 @@
             let statusHTML;
             if (i <= paidInstallmentsCount) {
                 statusHTML = `<span class="font-semibold text-green-600 flex items-center"><i data-lucide="check-circle-2" class="w-4 h-4 mr-1"></i>Paid</span>`;
-            } else if (i <= paidInstallaclesCount + pendingInstallmentsCount) {
+            } else if (i <= paidInstallmentsCount + pendingInstallmentsCount) {
                 statusHTML = `<span class="font-semibold text-blue-600 flex items-center"><i data-lucide="send" class="w-4 h-4 mr-1"></i>Pending</span>`;
             } else {
                 statusHTML = `<a href="tenant-payment.html?tid=${tenantId}&installment=${i}&amount=${installmentAmount}" class="text-white font-bold py-2 px-4 rounded-lg text-sm hover:brightness-110 flex items-center justify-center space-x-1" style="background-color: var(--theme-color);">
@@ -508,3 +508,4 @@
 </script>
 </body>
 </html>
+
