@@ -136,7 +136,7 @@ onAuthStateChanged(auth, async (user) => {
         
         // Populate summary details
         // Corrected line
-document.getElementById('summary-total').textContent = `₹${totalAmountDue.toLocaleString('en-IN')}`;
+        document.getElementById('summary-total').textContent = `₹${totalDue.toLocaleString('en-IN')}`;
         document.getElementById('summary-paid').textContent = `₹${amountPaid.toLocaleString('en-IN')}`;
         document.getElementById('summary-remaining').textContent = `₹${remainingDue.toLocaleString('en-IN')}`;
 
