@@ -471,6 +471,7 @@ const saveTenant = async (e) => {
             saveButton.disabled = false;
             saveButton.textContent = 'Update Tenant';
         }
+    // REPLACE THE ENTIRE 'ELSE' BLOCK for creating a new tenant with this FINAL code
     } else {
         // Logic for CREATING a new tenant
         try {
@@ -489,14 +490,24 @@ const saveTenant = async (e) => {
                 if (name) { familyMembers.push({ name, aadhar }); }
             });
             
+            // --- NAYA AUR SABSE AACHA DATE LOGIC (AAPKE IDEA PAR AADHARIT) ---
             const rentDueDay = parseInt(formData.rentDueDay) || 5;
-            const today = new Date();
-            let newDueDate = new Date(today.getFullYear(), today.getMonth(), rentDueDay);
-            if (today.getDate() > rentDueDay) {
-                newDueDate.setMonth(newDueDate.getMonth() + 1);
-            }
+            const creationTimestamp = Timestamp.now(); // Tenant ki joining ka timestamp
+            const creationDate = creationTimestamp.toDate(); // Usko JS Date mein badla
+            
+            // Timezone ki problem se bachne ke liye time set kiya
+            creationDate.setHours(12, 0, 0, 0); 
+            
+            // Pehli due date joining ke mahine mein set ki
+            let firstDueDate = new Date(creationDate.getFullYear(), creationDate.getMonth(), rentDueDay);
+            firstDueDate.setHours(12, 0, 0, 0);
 
-            // UPDATED: Added allowedInstallments to the new tenant data
+            // Agar tenant ne due date ke baad join kiya, to pehli due date agle mahine hogi
+            if (creationDate.getDate() > rentDueDay) {
+                firstDueDate.setMonth(firstDueDate.getMonth() + 1);
+            }
+            // --- END OF NEW DATE LOGIC ---
+
             const tenantData = {
                 name: formData.name, phone: formData.phone, aadharNumber: formData.aadharNumber,
                 address: formData.address, familyMembers: familyMembers, propertyId: formData.propertyId,
@@ -506,11 +517,14 @@ const saveTenant = async (e) => {
                 rentIncrementDate: formData.rentIncrementDate ? Timestamp.fromDate(new Date(formData.rentIncrementDate)) : null,
                 agreementDate: formData.agreementDate ? Timestamp.fromDate(new Date(formData.agreementDate)) : null,
                 agreementEndDate: formData.agreementEndDate ? Timestamp.fromDate(new Date(formData.agreementEndDate)) : null,
-                dueDate: Timestamp.fromDate(newDueDate),
                 email: formData.email || null,
                 imageUrl: formData.imageUrl || '',
                 status: 'Due',
-                createdAt: Timestamp.now(),
+                
+                // Yahan hum naya aur aacha data save kar rahe hain
+                createdAt: creationTimestamp,
+                dueDate: Timestamp.fromDate(firstDueDate),
+                
                 allowedInstallments: parseInt(formData.allowedInstallments) || 1,
             };
 
