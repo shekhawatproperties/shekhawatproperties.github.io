@@ -184,7 +184,7 @@
 
 <script type="module">
   import { db, auth } from './firebase-config.js';
-  import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
   import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
   const loader = document.getElementById('loader');
@@ -210,11 +210,6 @@
   if (sessionStorage.getItem('showTryAgainToast') === 'true') {
     showToast('You can now attempt to pay again.', 'success');
     sessionStorage.removeItem('showTryAgainToast');
-  }
-
-  if (sessionStorage.getItem('showPaymentSubmittedToast') === 'true') {
-    showToast('Payment submitted for verification!', 'success');
-    sessionStorage.removeItem('showPaymentSubmittedToast');
   }
 
   let confirmCallback = null;
@@ -357,14 +352,9 @@
     today.setHours(0, 0, 0, 0);
     const dueDate = tenant.dueDate ? new Date(tenant.dueDate.seconds * 1000) : new Date();
 
-    const cycleStartDate = new Date(dueDate);
-    cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);
-    cycleStartDate.setDate(cycleStartDate.getDate() + 1);
+    let billBreakdownHTML = `<div class="flex justify-between"><span class="font-medium text-gray-500">Base Rent:</span><span>₹${tenant.rent.toLocaleString('en-IN')}</span></div>`;
+    let totalDue = tenant.rent;
     
-    // ✅ New Code
-let totalDue = tenant.rent || 0; // Added || 0
-let billBreakdownHTML = `<div class="flex justify-between"><span class="font-medium text-gray-500">Base Rent:</span><span>₹${(tenant.rent || 0).toLocaleString('en-IN')}</span></div>`;
-
     const unbilledQuery = query(collection(db, "tenants", tenantId, "monthly_charges"), where("isBilled", "==", false));
     const unbilledSnaps = await getDocs(unbilledQuery);
 
@@ -378,7 +368,7 @@ let billBreakdownHTML = `<div class="flex justify-between"><span class="font-med
             if (charge.otherCharges > 0) { billBreakdownHTML += `<div class="flex justify-between"><span class="font-medium text-gray-500">Other Charges (${monthName} ${year}):</span><span>₹${charge.otherCharges.toLocaleString('en-IN')}</span></div>`; }
         });
     }
-    
+
     let lateFee = 0;
     const daysOverdue = Math.max(0, Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24)));
     if (daysOverdue > settings.gracePeriodDays) {
@@ -387,61 +377,24 @@ let billBreakdownHTML = `<div class="flex justify-between"><span class="font-med
         if (lateFee > 0) billBreakdownHTML += `<div class="flex justify-between text-red-600"><span class="font-medium">Late Fee:</span><span>₹${lateFee.toLocaleString('en-IN')}</span></div>`;
     }
     
-    let amountPaidSoFar = 0;
-    const paymentsInCycleQuery = query(
-        collection(db, "payments"), 
-        where("tenantId", "==", tenantId), 
-        where("date", ">=", Timestamp.fromDate(cycleStartDate)),
-        where("date", "<=", tenant.dueDate)
-    );
-    const paymentsInCycleSnap = await getDocs(paymentsInCycleQuery);
-    paymentsInCycleSnap.forEach(doc => {
-        amountPaidSoFar += doc.data().amount;
-    });
-    
-    const remainingDue = totalDue - amountPaidSoFar;
-    const allowedInstallments = tenant.allowedInstallments || 1;
     const dueDateFormatted = dueDate.toLocaleDateString('en-IN', longDateOptions);
     const cardClass = tenant.status === 'Overdue' ? 'border-red-500' : 'border-yellow-500';
     card.className = `bg-white p-6 sm:p-8 rounded-2xl shadow-sm border-l-4 ${cardClass}`;
-
-    const paymentPageLink = `tenant-payment.html?tid=${tenantId}&totalDue=${totalDue}&amountPaid=${amountPaidSoFar}&installments=${allowedInstallments}`;
-
-    if (allowedInstallments > 1 && remainingDue > 0) {
-        card.innerHTML = `<h2 class="text-lg font-semibold text-gray-500 mb-2">Remaining Amount Due</h2>
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
-                <div>
-                    <p class="text-5xl font-extrabold text-gray-800">₹${remainingDue.toLocaleString('en-IN')}</p>
-                    <p class="font-semibold mt-1">Due by: ${dueDateFormatted}</p>
-                </div>
-                <a href="${paymentPageLink}" class="w-full md:w-auto mt-6 md:mt-0 text-white font-bold py-4 px-8 rounded-lg hover:brightness-110 flex items-center justify-center space-x-2 text-lg" style="background-color: var(--theme-color);">
-                    <i data-lucide="shield-check" class="w-6 h-6"></i><span>Pay Now</span>
-                </a>
+    card.innerHTML = `<h2 class="text-lg font-semibold text-gray-500 mb-2">Total Amount Due</h2>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+                <p class="text-5xl font-extrabold text-gray-800">₹${totalDue.toLocaleString('en-IN')}</p>
+                <p class="font-semibold mt-1">Due by: ${dueDateFormatted}</p>
             </div>
-            <div class="mt-6 pt-4 border-t border-gray-100 text-sm text-gray-600 space-y-2">
-                <div class="flex justify-between text-green-600"><span class="font-medium">Paid this month:</span><span class="font-bold">₹${amountPaidSoFar.toLocaleString('en-IN')}</span></div>
-                <hr class="my-2">
-                ${billBreakdownHTML}
-                <hr class="my-2">
-                <div class="flex justify-between font-bold text-base"><span class="font-medium text-gray-500">Total Bill for this month:</span><span>₹${totalDue.toLocaleString('en-IN')}</span></div>
-            </div>`;
-    } else {
-        card.innerHTML = `<h2 class="text-lg font-semibold text-gray-500 mb-2">Total Amount Due</h2>
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
-                <div>
-                    <p class="text-5xl font-extrabold text-gray-800">₹${totalDue.toLocaleString('en-IN')}</p>
-                    <p class="font-semibold mt-1">Due by: ${dueDateFormatted}</p>
-                </div>
-                <a href="${paymentPageLink}" class="w-full md:w-auto mt-6 md:mt-0 text-white font-bold py-4 px-8 rounded-lg hover:brightness-110 flex items-center justify-center space-x-2 text-lg" style="background-color: var(--theme-color);">
-                    <i data-lucide="shield-check" class="w-6 h-6"></i><span>Pay Now</span>
-                </a>
-            </div>
-            <div class="mt-6 pt-6 border-t border-gray-100 text-sm text-gray-600 space-y-2">${billBreakdownHTML}</div>
-            <div class="mt-4 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-xs flex items-center space-x-2">
-                <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
-                <p>A late fee of ₹${settings.lateFeePerDay}/day will be charged after a ${settings.gracePeriodDays} day grace period.</p>
-            </div>`;
-    }
+            <a href="tenant-payment.html?tid=${tenantId}" class="w-full md:w-auto mt-6 md:mt-0 text-white font-bold py-4 px-8 rounded-lg hover:brightness-110 flex items-center justify-center space-x-2 text-lg" style="background-color: var(--theme-color);">
+                <i data-lucide="shield-check" class="w-6 h-6"></i><span>Pay Now</span>
+            </a>
+        </div>
+        <div class="mt-6 pt-6 border-t border-gray-100 text-sm text-gray-600 space-y-2">${billBreakdownHTML}</div>
+        <div class="mt-4 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-xs flex items-center space-x-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
+            <p>A late fee of ₹${settings.lateFeePerDay}/day will be charged after a ${settings.gracePeriodDays} day grace period.</p>
+        </div>`;
   }
 
   function populateRecentPayments(payments) {
@@ -504,8 +457,3 @@ let billBreakdownHTML = `<div class="flex justify-between"><span class="font-med
 </script>
 </body>
 </html>
-
-
-
-
-
