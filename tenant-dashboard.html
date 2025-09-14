@@ -361,8 +361,9 @@
     cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);
     cycleStartDate.setDate(cycleStartDate.getDate() + 1);
     
-    let totalDue = tenant.rent;
-    let billBreakdownHTML = `<div class="flex justify-between"><span class="font-medium text-gray-500">Base Rent:</span><span>₹${tenant.rent.toLocaleString('en-IN')}</span></div>`;
+    // ✅ New Code
+let totalDue = tenant.rent || 0; // Added || 0
+let billBreakdownHTML = `<div class="flex justify-between"><span class="font-medium text-gray-500">Base Rent:</span><span>₹${(tenant.rent || 0).toLocaleString('en-IN')}</span></div>`;
 
     const unbilledQuery = query(collection(db, "tenants", tenantId, "monthly_charges"), where("isBilled", "==", false));
     const unbilledSnaps = await getDocs(unbilledQuery);
@@ -503,6 +504,7 @@
 </script>
 </body>
 </html>
+
 
 
 
