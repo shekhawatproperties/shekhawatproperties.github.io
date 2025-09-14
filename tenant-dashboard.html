@@ -298,7 +298,8 @@
   });
 
   async function populatePaymentCard(tenant, tenantId, settings, pendingPayment) {
-    if (pendingPayment) {
+    // MODIFIED: Global pending card will only show for non-installment tenants
+    if (pendingPayment && (!tenant.allowedInstallments || tenant.allowedInstallments <= 1)) {
         renderPendingCard();
     } else if (tenant.rejectionReason) {
         renderRejectedCard(tenant, tenantId);
@@ -346,7 +347,7 @@
     card.innerHTML = `<i data-lucide="calendar-check" class="w-12 h-12 text-green-500 mx-auto"></i><h2 class="text-xl font-bold text-gray-700 mt-4">Rent is Paid</h2><p class="text-gray-500 mt-1">Your next payment window will open on <br><strong class="text-gray-600">${formattedDate}</strong>.</p>`;
   }
 
-  // REPLACED FUNCTION: Now handles both single and installment payments
+  // REPLACED FUNCTION V2: Tracks each installment individually and brings back late fee warning.
   async function renderDueCard(tenant, tenantId, settings) {
     const card = document.getElementById('payment-due-card');
     const today = new Date();
@@ -379,7 +380,7 @@
         if (lateFee > 0) billBreakdownHTML += `<div class="flex justify-between text-red-600"><span class="font-medium">Late Fee:</span><span>₹${lateFee.toLocaleString('en-IN')}</span></div>`;
     }
 
-    const dueDateFormatted = dueDate.toLocaleDateString('en-IN', longDateOptions);
+    const dueDateFormatted = dueDate.toLocaleString('en-IN', longDateOptions);
     const cardClass = tenant.status === 'Overdue' ? 'border-red-500' : 'border-yellow-500';
     card.className = `bg-white p-6 sm:p-8 rounded-2xl shadow-sm border-l-4 ${cardClass}`;
 
@@ -387,26 +388,25 @@
     const numInstallments = tenant.allowedInstallments || 1;
     if (numInstallments > 1) {
         // --- RENDER INSTALLMENT VIEW ---
+        // --- RENDER INSTALLMENT VIEW (IMPROVED LOGIC) ---
         const installmentAmount = Math.round((totalDue / numInstallments) * 100) / 100;
 
         // Check paid and pending amounts for this due date
         const paymentsQuery = query(collection(db, "payments"), where("tenantId", "==", tenantId), where("date", ">=", tenant.dueDate));
         const pendingQuery = query(collection(db, "pendingPayments"), where("tenantId", "==", tenantId));
         const [paymentSnaps, pendingSnaps] = await Promise.all([getDocs(paymentsQuery), getDocs(pendingQuery)]);
-        
-        let totalPaid = paymentSnaps.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
-        let totalPending = pendingSnaps.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
+
+        // Get arrays of installment numbers that are paid or pending
+        const paidInstallmentNumbers = paymentSnaps.docs.map(doc => doc.data().installmentNumber).filter(Boolean);
+        const pendingInstallmentNumbers = pendingSnaps.docs.map(doc => doc.data().installmentNumber).filter(Boolean);
 
         let installmentsHTML = '';
-        let paidInstallmentsCount = Math.floor(totalPaid / installmentAmount);
-        let pendingInstallmentsCount = Math.floor(totalPending / installmentAmount);
-        
         for (let i = 1; i <= numInstallments; i++) {
             let statusHTML;
-            if (i <= paidInstallmentsCount) {
+            if (paidInstallmentNumbers.includes(i)) {
                 statusHTML = `<span class="font-semibold text-green-600 flex items-center"><i data-lucide="check-circle-2" class="w-4 h-4 mr-1"></i>Paid</span>`;
-            } else if (i <= paidInstallmentsCount + pendingInstallmentsCount) {
-                statusHTML = `<span class="font-semibold text-blue-600 flex items-center"><i data-lucide="send" class="w-4 h-4 mr-1"></i>Pending</span>`;
+            } else if (pendingInstallmentNumbers.includes(i)) {
+                statusHTML = `<span class="font-semibold text-blue-600 flex items-center"><i data-lucide="send" class="w-4 h-4 mr-1"></i>Pending Verification</span>`;
             } else {
                 statusHTML = `<a href="tenant-payment.html?tid=${tenantId}&installment=${i}&amount=${installmentAmount}" class="text-white font-bold py-2 px-4 rounded-lg text-sm hover:brightness-110 flex items-center justify-center space-x-1" style="background-color: var(--theme-color);">
                     <i data-lucide="shield-check" class="w-4 h-4"></i><span>Pay Now</span>
@@ -414,9 +414,9 @@
             }
 
             installmentsHTML += `
-                <div class="flex justify-between items-center p-3 rounded-lg ${i % 2 === 0 ? 'bg-gray-50' : ''}">
+                <div class="flex justify-between items-center p-3 rounded-lg ${i % 2 !== 0 ? 'bg-gray-50' : ''}">
                     <div>
-                        <p class="font-bold text-gray-700">Installment ${i}</p>
+                        <p class="font-bold text-gray-700">Installment ${i} of ${numInstallments}</p>
                         <p class="text-xl font-extrabold text-gray-800">₹${installmentAmount.toLocaleString('en-IN')}</p>
                     </div>
                     ${statusHTML}
@@ -426,10 +426,15 @@
         card.innerHTML = `
             <h2 class="text-lg font-semibold text-gray-500 mb-2">Total Amount Due: <span class="text-2xl font-bold text-gray-800">₹${totalDue.toLocaleString('en-IN')}</span></h2>
             <p class="font-semibold mt-1 text-sm">Due by: ${dueDateFormatted}</p>
-            <div class="mt-4 space-y-2">${installmentsHTML}</div>`;
+            <div class="mt-4 space-y-2">${installmentsHTML}</div>
+            <div class="mt-4 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-xs flex items-center space-x-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
+                <p>A late fee of ₹${settings.lateFeePerDay}/day will be charged after a ${settings.gracePeriodDays} day grace period.</p>
+            </div>`; // <-- LATE FEE WARNING ADDED BACK
 
     } else {
         // --- RENDER SINGLE PAYMENT VIEW (EXISTING LOGIC) ---
+        // --- RENDER SINGLE PAYMENT VIEW (NO CHANGE HERE) ---
         card.innerHTML = `<h2 class="text-lg font-semibold text-gray-500 mb-2">Total Amount Due</h2>
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
             <div>
@@ -508,4 +513,3 @@
 </script>
 </body>
 </html>
-
