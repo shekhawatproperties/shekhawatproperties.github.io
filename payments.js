@@ -293,6 +293,24 @@ const openVerificationModal = async (pendingPayment) => {
     document.getElementById('confirm-property').textContent = property.name || 'N/A';
     document.getElementById('confirm-date').textContent = formatDate(pendingPayment.time);
     document.getElementById('confirm-v-total').textContent = `₹${(pendingPayment.amount || 0).toLocaleString('en-IN')}`;
+    // NEW: Show installment info if available
+    const installmentInfoContainer = document.getElementById('confirm-installment-info');
+    if (!installmentInfoContainer) {
+        const totalAmountEl = document.getElementById('confirm-v-total');
+        totalAmountEl.parentElement.insertAdjacentHTML('beforebegin', '<div id="confirm-installment-info"></div>');
+    }
+
+    if (pendingPayment.installmentNumber) {
+        const tenant = allTenants.find(t => t.id === pendingPayment.tenantId);
+        const totalInstallments = tenant ? tenant.allowedInstallments : '?';
+        document.getElementById('confirm-installment-info').innerHTML = `
+        <div class="flex justify-between font-bold text-blue-700 bg-blue-100 p-2 rounded-md mb-2">
+            <span>Installment Details:</span>
+            <span>Installment ${pendingPayment.installmentNumber} of ${totalInstallments}</span>
+        </div>`;
+    } else {
+        document.getElementById('confirm-installment-info').innerHTML = '';
+    }
     const chargesRef = collection(db, "tenants", pendingPayment.tenantId, "monthly_charges");
     const unbilledQuery = query(chargesRef, where("isBilled", "==", false));
     const unbilledSnaps = await getDocs(unbilledQuery);
