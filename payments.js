@@ -434,13 +434,12 @@ elements.verificationTableBody.addEventListener('click', async (e) => {
         });
     }
 });
-// FINAL and CORRECTED verification logic
+// FINAL AND MOST ROBUST version of verification logic
 document.getElementById('confirm-verify-btn').addEventListener('click', async () => {
     if (!currentPendingPaymentId) return;
     const confirmBtn = document.getElementById('confirm-verify-btn');
     setButtonLoading(confirmBtn, true);
     const pendingPayment = allPendingPayments.find(p => p.id === currentPendingPaymentId);
-
     try {
         const tenant = allTenants.find(t => t.id === pendingPayment.tenantId);
         if (!tenant) throw new Error("Tenant not found for this payment.");
@@ -453,47 +452,58 @@ document.getElementById('confirm-verify-btn').addEventListener('click', async ()
             status: 'Verified',
             paymentMode: 'Online',
         };
-        delete paymentData.time; // remove old timestamp
+        delete paymentData.time;
         await setDoc(doc(db, "payments", currentPendingPaymentId), paymentData);
 
-        // Step 2: Unbill the associated charges
-        const chargesRef = collection(db, "tenants", pendingPayment.tenantId, "monthly_charges");
+        // Step 2: Unbill associated charges
+        const chargesRef = collection(db, "tenants", tenant.id, "monthly_charges");
         const unbilledQuery = query(chargesRef, where("isBilled", "==", false));
         const unbilledSnaps = await getDocs(unbilledQuery);
         const updatePromises = [];
         unbilledSnaps.forEach(doc => updatePromises.push(setDoc(doc.ref, { isBilled: true }, { merge: true })));
         await Promise.all(updatePromises);
 
-        // Step 3: Check if the full rent for the month is now paid
-        const paymentsAfterDueDate = query(collection(db, "payments"), where("tenantId", "==", tenant.id), where("date", ">=", tenant.dueDate));
-        const paidSnaps = await getDocs(paymentsAfterDueDate);
-        const totalPaidForMonth = paidSnaps.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
+        // --- THIS IS THE CRITICAL FIX ---
+        // Step 3: Correctly define the current payment cycle to calculate total paid amount
+        const currentDueDate = new Date(tenant.dueDate.seconds * 1000);
+        const previousDueDate = new Date(currentDueDate);
+        previousDueDate.setMonth(previousDueDate.getMonth() - 1); // Go back one month
 
-        // Recalculate the total amount that was due for accuracy
+        // Fetch all payments made WITHIN this cycle (from previous due date until now)
+        const paymentsInCycleQuery = query(
+            collection(db, "payments"),
+            where("tenantId", "==", tenant.id),
+            where("date", ">=", Timestamp.fromDate(previousDueDate))
+        );
+        const paidSnaps = await getDocs(paymentsInCycleQuery);
+        const totalPaidForMonth = paidSnaps.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
+        // --- END OF CRITICAL FIX ---
+
+
+        // Step 4: Recalculate the total amount that was due for accuracy
         const settingsSnap = await getDoc(doc(db, "settings", "paymentRules"));
         const settings = settingsSnap.exists() ? settingsSnap.data() : { gracePeriodDays: 0, lateFeePerDay: 0 };
         let totalDueForMonth = tenant.rent;
         unbilledSnaps.forEach(doc => { totalDueForMonth += (doc.data().electricityBill || 0) + (doc.data().otherCharges || 0); });
-        
+
         const today = new Date(); today.setHours(0, 0, 0, 0);
-        const dueDate = new Date(tenant.dueDate.seconds * 1000);
-        const daysOverdue = Math.max(0, Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24)));
+        const daysOverdue = Math.max(0, Math.ceil((today - currentDueDate) / (1000 * 60 * 60 * 24)));
         if (daysOverdue > settings.gracePeriodDays) {
             totalDueForMonth += (daysOverdue - settings.gracePeriodDays) * settings.lateFeePerDay;
         }
 
-        // Step 4: Update tenant's status ONLY if the full amount is paid
+        // Step 5: Update tenant's status ONLY if the full amount is paid
         if (totalPaidForMonth >= totalDueForMonth) {
             const tenantRef = doc(db, 'tenants', tenant.id);
-            const nextDueDate = getNextDueDate(tenant.dueDate, tenant.rentDueDay); // Uses the new, correct function
+            const nextDueDate = getNextDueDate(tenant.dueDate, tenant.rentDueDay);
             await setDoc(tenantRef, { status: 'Paid', dueDate: Timestamp.fromDate(nextDueDate), rejectionReason: '' }, { merge: true });
             window.showToast('Final installment verified. Tenant status updated to Paid!');
         } else {
             const remaining = totalDueForMonth - totalPaidForMonth;
-            window.showToast(`Installment verified. ₹${remaining.toLocaleString('en-IN')} remaining.`);
+            window.showToast(`Installment verified. ₹${Math.max(0, remaining).toLocaleString('en-IN')} remaining.`);
         }
 
-        // Step 5: Delete the pending payment record
+        // Step 6: Delete the pending payment record
         await deleteDoc(doc(db, 'pendingPayments', currentPendingPaymentId));
 
         closeModal(elements.confirmVerificationModal);
