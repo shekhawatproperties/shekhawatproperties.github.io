@@ -63,6 +63,7 @@ document.getElementById('paid-btn').addEventListener('click', async () => {
     paidButton.innerHTML = `<div class="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mx-auto"></div>`;
 
     try {
+        const params = new URLSearchParams(window.location.search);
         if (totalAmountDue <= 0) throw new Error("Calculated amount is zero or less.");
 
         const dueDate = new Date(tenantData.dueDate.seconds * 1000);
@@ -85,7 +86,8 @@ document.getElementById('paid-btn').addEventListener('click', async () => {
             amount: totalAmountDue,
             time: Timestamp.now(),
             paidToUpiId: settingsData.upiId,
-            breakdown: breakdown
+            breakdown: breakdown,
+            installmentNumber: parseInt(params.get('installment')) || null // NEW: Save installment number
         };
         await addDoc(collection(db, "pendingPayments"), paymentDataForAdmin);
         await setDoc(doc(db, "tenants", tenantId), { rejectionReason: '' }, { merge: true });
@@ -142,23 +144,32 @@ onAuthStateChanged(auth, async (user) => {
         if (!propDoc.exists()) throw new Error("Property data not found.");
         propertyData = propDoc.data();
         
-        totalAmountDue = tenantData.rent || 0;
-        const unbilledQuery = query(collection(db, "tenants", tenantId, "monthly_charges"), where("isBilled", "==", false));
-        const unbilledSnaps = await getDocs(unbilledQuery);
-        if (!unbilledSnaps.empty) {
-            unbilledSnaps.forEach(doc => {
-                const charge = doc.data();
-                totalAmountDue += (charge.electricityBill || 0) + (charge.otherCharges || 0);
-            });
-        }
-        const today = new Date(); today.setHours(0,0,0,0);
-        const dueDate = new Date(tenantData.dueDate.seconds * 1000);
-        const daysOverdue = Math.max(0, Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24)));
-        if (daysOverdue > rulesData.gracePeriodDays) {
-            const lateFee = (daysOverdue - rulesData.gracePeriodDays) * rulesData.lateFeePerDay;
-            totalAmountDue += lateFee;
+        // UPDATED: Check for installment amount from URL first
+        const installmentAmount = parseFloat(params.get('amount'));
+
+        if (installmentAmount) {
+            totalAmountDue = installmentAmount;
+        } else {
+            // Original full amount calculation logic (as a fallback)
+            totalAmountDue = tenantData.rent || 0;
+            const unbilledQuery = query(collection(db, "tenants", tenantId, "monthly_charges"), where("isBilled", "==", false));
+            const unbilledSnaps = await getDocs(unbilledQuery);
+            if (!unbilledSnaps.empty) {
+                unbilledSnaps.forEach(doc => {
+                    const charge = doc.data();
+                    totalAmountDue += (charge.electricityBill || 0) + (charge.otherCharges || 0);
+                });
+            }
+            const today = new Date(); today.setHours(0,0,0,0);
+            const dueDate = new Date(tenantData.dueDate.seconds * 1000);
+            const daysOverdue = Math.max(0, Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24)));
+            if (daysOverdue > rulesData.gracePeriodDays) {
+                const lateFee = (daysOverdue - rulesData.gracePeriodDays) * rulesData.lateFeePerDay;
+                totalAmountDue += lateFee;
+            }
         }
 
+        // Update UI with the final amount
         document.getElementById('property-name').textContent = propertyData.name;
         document.getElementById('total-amount').textContent = `₹${totalAmountDue.toLocaleString('en-IN')}`;
         document.getElementById('amount-instructions').textContent = `₹${totalAmountDue.toLocaleString('en-IN')}`;
@@ -166,7 +177,6 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('upi-id-display').textContent = settingsData.upiId || 'not-found@upi';
 
         showView('payment');
-
     } catch (error) {
         console.error("Error loading payment page:", error);
         showToast("Error: " + error.message, "error");
