@@ -172,19 +172,24 @@
         document.getElementById('property-name').textContent = `Property: ${property.name}`;
         document.getElementById('payment-mode').textContent = payment.paymentMode || 'Online';
 
-        const breakdown = payment.breakdown || {};
         const breakdownTable = document.getElementById('breakdown-table');
         breakdownTable.innerHTML = '';
         
         const rowClass = "p-3 border-b border-slate-100";
-        let hasBreakdown = false;
-        if (breakdown.rent > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Base Rent</td><td class="${rowClass} text-right">${formatCurrency(breakdown.rent)}</td></tr>`; hasBreakdown = true; }
-        if (breakdown.electricity > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Electricity Bill</td><td class="${rowClass} text-right">${formatCurrency(breakdown.electricity)}</td></tr>`; hasBreakdown = true; }
-        if (breakdown.lateFee > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass} text-red-600">Late Fee</td><td class="${rowClass} text-right text-red-600">${formatCurrency(breakdown.lateFee)}</td></tr>`; hasBreakdown = true; }
-        if (breakdown.other > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Other Charges</td><td class="${rowClass} text-right">${formatCurrency(breakdown.other)}</td></tr>`; hasBreakdown = true; }
-        
-        if (!hasBreakdown) {
-             breakdownTable.innerHTML += `<tr><td class="${rowClass}">Total Payment</td><td class="${rowClass} text-right">${formatCurrency(payment.amount)}</td></tr>`;
+
+        if (payment.installmentNumber) {
+            breakdownTable.innerHTML = `<tr><td class="${rowClass}">Installment Payment (#${payment.installmentNumber})</td><td class="${rowClass} text-right">${formatCurrency(payment.amount)}</td></tr>`;
+        } else {
+            const breakdown = payment.breakdown || {};
+            let hasBreakdown = false;
+            if (breakdown.rent > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Base Rent</td><td class="${rowClass} text-right">${formatCurrency(breakdown.rent)}</td></tr>`; hasBreakdown = true; }
+            if (breakdown.electricity > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Electricity Bill</td><td class="${rowClass} text-right">${formatCurrency(breakdown.electricity)}</td></tr>`; hasBreakdown = true; }
+            if (breakdown.lateFee > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass} text-red-600">Late Fee</td><td class="${rowClass} text-right text-red-600">${formatCurrency(breakdown.lateFee)}</td></tr>`; hasBreakdown = true; }
+            if (breakdown.other > 0) { breakdownTable.innerHTML += `<tr><td class="${rowClass}">Other Charges</td><td class="${rowClass} text-right">${formatCurrency(breakdown.other)}</td></tr>`; hasBreakdown = true; }
+            
+            if (!hasBreakdown) {
+                 breakdownTable.innerHTML += `<tr><td class="${rowClass}">Total Payment</td><td class="${rowClass} text-right">${formatCurrency(payment.amount)}</td></tr>`;
+            }
         }
         
         if (payment.notes) {
